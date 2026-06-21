@@ -17,15 +17,20 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon --watch main.ts --watch src --ext ts,json --exec tsx main.ts",
-    "start": "node dist/main.js"
+    "start": "node dist/main.js",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "mysql2": "^3.22.5"
+    "jsonwebtoken": "^9.0.3",
+    "mysql2": "^3.22.5",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^26.0.0",
     "nodemon": "^3.1.14",
     "tsx": "^4.22.4",
