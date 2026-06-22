@@ -4,8 +4,10 @@ import express, {
 } from "express";
 
 import type { Pool } from "mysql2/promise";
+import { ZodError } from "zod";
 
-import { createUserModule } from "../user/infrastructure/dependences.js";
+import { AppError } from "../user/applications/errors/AppError.js";
+import { createUserModule } from "../user/infrastructure/dependencies.js";
 
 export function createHttpApp(
   databasePool: Pool,
@@ -45,7 +47,37 @@ export function createHttpApp(
     _request,
     response,
     _next
-  ) => {
+  ): void => {
+    if (error instanceof ZodError) {
+      response.status(400).json({
+        success: false,
+        message: "Datos inválidos",
+        errors: error.issues
+      });
+      return;
+    }
+
+    if (error instanceof AppError) {
+      response.status(error.statusCode).json({
+        success: false,
+        message: error.message
+      });
+      return;
+    }
+
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "ER_DUP_ENTRY"
+    ) {
+      response.status(409).json({
+        success: false,
+        message: "El usuario, correo o teléfono ya está registrado"
+      });
+      return;
+    }
+
     console.error(error);
 
     response.status(500).json({
