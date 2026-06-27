@@ -13,14 +13,19 @@ import type {
 } from "../../domain/repositories/UserRepository.js";
 
 interface UserRow extends RowDataPacket {
-  uuid: string;
-  nombre_usuario: string;
-  correo: string | null;
-  numero_telefonico: string | null;
-  contrasena_hash: string;
-  fecha_creacion: Date;
-  fecha_actualizacion: Date;
+  id: string;
+  nombre: string;
+  email: string;
+  password_hash: string;
+  tipo_usuario_id: string;
+  telefono: string | null;
+  fecha_registro: Date;
+  es_premium: number;
   activo: number;
+}
+
+interface UserTypeRow extends RowDataPacket {
+  id: string;
 }
 
 type SqlValue = string | number | boolean | Date | Buffer | null;
@@ -30,19 +35,21 @@ export class MySqlUserRepository implements UserRepository {
 
   async create(data: CreateUserData): Promise<User> {
     await this.databasePool.execute(
-      `INSERT INTO usuarios (
-        uuid,
-        nombre_usuario,
-        correo,
-        numero_telefonico,
-        contrasena_hash
-      ) VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO usuario (
+        id,
+        nombre,
+        email,
+        password_hash,
+        tipo_usuario_id,
+        telefono
+      ) VALUES (?, ?, ?, ?, ?, ?)`,
       [
         data.id,
-        data.username,
+        data.name,
         data.email,
-        data.phone,
-        data.passwordHash
+        data.passwordHash,
+        data.userTypeId,
+        data.phone
       ]
     );
 
@@ -56,19 +63,23 @@ export class MySqlUserRepository implements UserRepository {
   }
 
   async findById(id: string): Promise<User | null> {
-    return this.findOne("uuid = ?", [id]);
-  }
-
-  async findByUsername(username: string): Promise<User | null> {
-    return this.findOne("nombre_usuario = ?", [username]);
+    return this.findOne("id = ?", [id]);
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    return this.findOne("correo = ?", [email]);
+    return this.findOne("email = ?", [email]);
   }
 
-  async findByPhone(phone: string): Promise<User | null> {
-    return this.findOne("numero_telefonico = ?", [phone]);
+  async findUserTypeIdByName(name: string): Promise<string | null> {
+    const [rows] = await this.databasePool.execute<UserTypeRow[]>(
+      `SELECT id
+       FROM tipo_usuario
+       WHERE nombre = ?
+       LIMIT 1`,
+      [name]
+    );
+
+    return rows[0]?.id ?? null;
   }
 
   async update(
@@ -78,23 +89,23 @@ export class MySqlUserRepository implements UserRepository {
     const fields: string[] = [];
     const values: SqlValue[] = [];
 
-    if (data.username !== undefined) {
-      fields.push("nombre_usuario = ?");
-      values.push(data.username);
+    if (data.name !== undefined) {
+      fields.push("nombre = ?");
+      values.push(data.name);
     }
 
     if (data.email !== undefined) {
-      fields.push("correo = ?");
+      fields.push("email = ?");
       values.push(data.email);
     }
 
     if (data.phone !== undefined) {
-      fields.push("numero_telefonico = ?");
+      fields.push("telefono = ?");
       values.push(data.phone);
     }
 
     if (data.passwordHash !== undefined) {
-      fields.push("contrasena_hash = ?");
+      fields.push("password_hash = ?");
       values.push(data.passwordHash);
     }
 
@@ -105,9 +116,10 @@ export class MySqlUserRepository implements UserRepository {
     values.push(id);
 
     await this.databasePool.execute(
-      `UPDATE usuarios
+      `UPDATE usuario
        SET ${fields.join(", ")}
-       WHERE uuid = ?`,
+       WHERE id = ?
+       AND activo = 1`,
       values
     );
 
@@ -117,7 +129,10 @@ export class MySqlUserRepository implements UserRepository {
   async delete(id: string): Promise<boolean> {
     const [result] =
       await this.databasePool.execute<ResultSetHeader>(
-        "DELETE FROM usuarios WHERE uuid = ?",
+        `UPDATE usuario
+         SET activo = 0
+         WHERE id = ?
+         AND activo = 1`,
         [id]
       );
 
@@ -125,39 +140,42 @@ export class MySqlUserRepository implements UserRepository {
   }
 
   private async findOne(
-  condition: string,
-  values: SqlValue[]
-): Promise<User | null> {
-  const [rows] = await this.databasePool.execute<UserRow[]>(
-    `SELECT
-      uuid,
-      nombre_usuario,
-      correo,
-      numero_telefonico,
-      contrasena_hash,
-      fecha_creacion,
-      fecha_actualizacion,
-      activo
-     FROM usuarios
-     WHERE ${condition}
-     LIMIT 1`,
-    values
-  );
+    condition: string,
+    values: SqlValue[]
+  ): Promise<User | null> {
+    const [rows] = await this.databasePool.execute<UserRow[]>(
+      `SELECT
+        id,
+        nombre,
+        email,
+        password_hash,
+        tipo_usuario_id,
+        telefono,
+        fecha_registro,
+        es_premium,
+        activo
+       FROM usuario
+       WHERE ${condition}
+       AND activo = 1
+       LIMIT 1`,
+      values
+    );
 
-  const row = rows[0];
+    const row = rows[0];
 
-  return row ? this.mapToDomain(row) : null;
-}
+    return row ? this.mapToDomain(row) : null;
+  }
 
   private mapToDomain(row: UserRow): User {
     return {
-      id: row.uuid,
-      username: row.nombre_usuario,
-      email: row.correo,
-      phone: row.numero_telefonico,
-      passwordHash: row.contrasena_hash,
-      createdAt: row.fecha_creacion,
-      updatedAt: row.fecha_actualizacion,
+      id: row.id,
+      name: row.nombre,
+      email: row.email,
+      phone: row.telefono,
+      passwordHash: row.password_hash,
+      userTypeId: row.tipo_usuario_id,
+      registeredAt: row.fecha_registro,
+      isPremium: Boolean(row.es_premium),
       active: Boolean(row.activo)
     };
   }

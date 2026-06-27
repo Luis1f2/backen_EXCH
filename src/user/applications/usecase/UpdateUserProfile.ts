@@ -1,16 +1,21 @@
-import { toPublicUser, type PublicUser } from "../../domain/entities/User.js";
+import {
+  toPublicUser,
+  type PublicUser
+} from "../../domain/entities/User.js";
+
 import type {
   UpdateUserData,
   UserRepository
 } from "../../domain/repositories/UserRepository.js";
+
 import type { PasswordHasher } from "../ports/SecurityPorts.js";
 import { AppError } from "../errors/AppError.js";
 
 export interface UpdateUserProfileInput {
-  username?: string;
-  password?: string;
-  email?: string | null;
+  name?: string;
+  email?: string;
   phone?: string | null;
+  password?: string;
 }
 
 export class UpdateUserProfile {
@@ -29,29 +34,37 @@ export class UpdateUserProfile {
       throw new AppError("Usuario no encontrado", 404);
     }
 
-    const usernameOwner = input.username
-      ? await this.repository.findByUsername(input.username)
-      : null;
+    if (input.email && input.email !== currentUser.email) {
+      const existingEmail = await this.repository.findByEmail(input.email);
 
-    if (usernameOwner && usernameOwner.id !== userId) {
-      throw new AppError("El nombre de usuario ya existe", 409);
+      if (existingEmail && existingEmail.id !== userId) {
+        throw new AppError("El correo ya está registrado", 409);
+      }
     }
 
-    const changes: UpdateUserData = {};
+    const updateData: UpdateUserData = {};
 
-    if (input.username !== undefined) changes.username = input.username;
-    if (input.email !== undefined) changes.email = input.email;
-    if (input.phone !== undefined) changes.phone = input.phone;
+    if (input.name !== undefined) {
+      updateData.name = input.name;
+    }
+
+    if (input.email !== undefined) {
+      updateData.email = input.email;
+    }
+
+    if (input.phone !== undefined) {
+      updateData.phone = input.phone;
+    }
 
     if (input.password !== undefined) {
-      changes.passwordHash =
+      updateData.passwordHash =
         await this.passwordHasher.hash(input.password);
     }
 
-    const updatedUser = await this.repository.update(userId, changes);
+    const updatedUser = await this.repository.update(userId, updateData);
 
     if (!updatedUser) {
-      throw new AppError("No se pudo actualizar el usuario", 404);
+      throw new AppError("No se pudo actualizar el usuario", 500);
     }
 
     return toPublicUser(updatedUser);

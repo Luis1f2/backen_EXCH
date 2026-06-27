@@ -1,10 +1,11 @@
 import type { NextFunction, Request, Response } from "express";
 import { z } from "zod";
+
 import type { LoginUser } from "../../applications/usecase/LoginUser.js";
 
 const loginSchema = z.object({
-  username: z.string().trim().min(1),
-  password: z.string().min(1)
+  email: z.string().trim().email().max(150),
+  password: z.string().min(8).max(72)
 });
 
 export class LoginUserController {
@@ -19,7 +20,7 @@ export class LoginUserController {
       const input = loginSchema.parse(request.body);
 
       const result = await this.loginUser.execute(
-        input.username,
+        input.email,
         input.password
       );
 

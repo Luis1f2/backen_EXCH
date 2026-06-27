@@ -2,15 +2,16 @@ import type { User } from "../entities/User.js";
 
 export interface CreateUserData {
   id: string;
-  username: string;
-  email: string | null;
+  name: string;
+  email: string;
   phone: string | null;
   passwordHash: string;
+  userTypeId: string;
 }
 
 export interface UpdateUserData {
-  username?: string;
-  email?: string | null;
+  name?: string;
+  email?: string;
   phone?: string | null;
   passwordHash?: string;
 }
@@ -18,9 +19,8 @@ export interface UpdateUserData {
 export interface UserRepository {
   create(data: CreateUserData): Promise<User>;
   findById(id: string): Promise<User | null>;
-  findByUsername(username: string): Promise<User | null>;
   findByEmail(email: string): Promise<User | null>;
-  findByPhone(phone: string): Promise<User | null>;
+  findUserTypeIdByName(name: string): Promise<string | null>;
 
   update(
     id: string,

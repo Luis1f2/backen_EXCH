@@ -1,14 +1,29 @@
 import { randomUUID } from "node:crypto";
-import { toPublicUser, type PublicUser } from "../../domain/entities/User.js";
+
+import {
+  toPublicUser,
+  type PublicUser
+} from "../../domain/entities/User.js";
+
 import type { UserRepository } from "../../domain/repositories/UserRepository.js";
 import type { PasswordHasher } from "../ports/SecurityPorts.js";
 import { AppError } from "../errors/AppError.js";
 
+const allowedPublicUserTypes = [
+  "turista_nacional",
+  "turista_extranjero",
+  "habitante_local"
+] as const;
+
+export type PublicUserType =
+  (typeof allowedPublicUserTypes)[number];
+
 export interface RegisterUserInput {
-  username: string;
+  name: string;
+  email: string;
   password: string;
-  email?: string | null;
   phone?: string | null;
+  userType: PublicUserType;
 }
 
 export class RegisterUser {
@@ -18,24 +33,30 @@ export class RegisterUser {
   ) {}
 
   async execute(input: RegisterUserInput): Promise<PublicUser> {
-    if (await this.repository.findByUsername(input.username)) {
-      throw new AppError("El nombre de usuario ya existe", 409);
+    if (!allowedPublicUserTypes.includes(input.userType)) {
+      throw new AppError("Tipo de usuario no permitido", 400);
     }
 
-    if (input.email && await this.repository.findByEmail(input.email)) {
+    const existingEmail = await this.repository.findByEmail(input.email);
+
+    if (existingEmail) {
       throw new AppError("El correo ya está registrado", 409);
     }
 
-    if (input.phone && await this.repository.findByPhone(input.phone)) {
-      throw new AppError("El teléfono ya está registrado", 409);
+    const userTypeId =
+      await this.repository.findUserTypeIdByName(input.userType);
+
+    if (!userTypeId) {
+      throw new AppError("Tipo de usuario no encontrado", 400);
     }
 
     const user = await this.repository.create({
       id: randomUUID(),
-      username: input.username,
-      email: input.email ?? null,
+      name: input.name,
+      email: input.email,
       phone: input.phone ?? null,
-      passwordHash: await this.passwordHasher.hash(input.password)
+      passwordHash: await this.passwordHasher.hash(input.password),
+      userTypeId
     });
 
     return toPublicUser(user);

@@ -1,26 +1,15 @@
 import type { NextFunction, Request, Response } from "express";
 import { z } from "zod";
+
 import type { UpdateUserProfile } from "../../applications/usecase/UpdateUserProfile.js";
 import type { AuthenticatedRequest } from "./AuthenticatedRequest.js";
 
-const optionalText = (maximum: number) =>
-  z.preprocess(
-    (value) => value === "" ? null : value,
-    z.string().trim().max(maximum).nullable().optional()
-  );
-
 const updateSchema = z.object({
-  username: z.string().trim().min(3).max(50).optional(),
-  password: z.string().min(8).max(72).optional(),
-  email: z.preprocess(
-    (value) => value === "" ? null : value,
-    z.string().trim().email().max(254).nullable().optional()
-  ),
-  phone: optionalText(20)
-}).refine(
-  (input) => Object.keys(input).length > 0,
-  { message: "Debes enviar al menos un campo" }
-);
+  name: z.string().trim().min(3).max(100).optional(),
+  email: z.string().trim().email().max(150).optional(),
+  phone: z.string().trim().max(20).nullable().optional(),
+  password: z.string().min(8).max(72).optional()
+});
 
 export class UpdateUserProfileController {
   constructor(private readonly updateUserProfile: UpdateUserProfile) {}
@@ -31,10 +20,13 @@ export class UpdateUserProfileController {
     next: NextFunction
   ): Promise<void> => {
     try {
-      const { userId } = request as AuthenticatedRequest;
+      const authenticatedRequest = request as AuthenticatedRequest;
       const input = updateSchema.parse(request.body);
 
-      const user = await this.updateUserProfile.execute(userId, input);
+      const user = await this.updateUserProfile.execute(
+        authenticatedRequest.userId,
+        input
+      );
 
       response.status(200).json({
         success: true,

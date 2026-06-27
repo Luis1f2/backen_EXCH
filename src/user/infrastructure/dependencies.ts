@@ -1,5 +1,4 @@
 import type { Pool } from "mysql2/promise";
-import type { Router } from "express";
 
 import { RegisterUser } from "../applications/usecase/RegisterUser.js";
 import { LoginUser } from "../applications/usecase/LoginUser.js";
@@ -23,47 +22,35 @@ import { DeleteUserProfileController } from "./controller/DeleteUserProfileContr
 import { createUserRoutes } from "./routes/UserRoutes.js";
 
 export function createUserModule(
-  databasePool: Pool,
+  pool: Pool,
   jwtSecret: string
-): Router {
-  // Adaptadores de salida
-  const userRepository = new MySqlUserRepository(databasePool);
+) {
+  const repository = new MySqlUserRepository(pool);
   const passwordHasher = new BcryptPasswordHasher();
   const tokenService = new JwtTokenService(jwtSecret);
 
-  // Casos de uso
-  const registerUser = new RegisterUser(
-    userRepository,
-    passwordHasher
-  );
-
-  const loginUser = new LoginUser(
-    userRepository,
-    passwordHasher,
-    tokenService
-  );
-
-  const getUserProfile = new GetUserProfile(userRepository);
-
-  const updateUserProfile = new UpdateUserProfile(
-    userRepository,
-    passwordHasher
-  );
-
-  const deleteUserProfile = new DeleteUserProfile(
-    userRepository
-  );
-
-  // Adaptadores de entrada
   const controllers = {
-    register: new RegisterUserController(registerUser),
-    login: new LoginUserController(loginUser),
-    getProfile: new GetUserProfileController(getUserProfile),
+    register: new RegisterUserController(
+      new RegisterUser(
+        repository,
+        passwordHasher
+      )
+    ),
+    login: new LoginUserController(
+      new LoginUser(
+        repository,
+        passwordHasher,
+        tokenService
+      )
+    ),
+    getProfile: new GetUserProfileController(
+      new GetUserProfile(repository)
+    ),
     updateProfile: new UpdateUserProfileController(
-      updateUserProfile
+      new UpdateUserProfile(repository, passwordHasher)
     ),
     deleteProfile: new DeleteUserProfileController(
-      deleteUserProfile
+      new DeleteUserProfile(repository)
     )
   };
 

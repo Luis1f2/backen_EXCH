@@ -1,4 +1,8 @@
-import { toPublicUser, type PublicUser } from "../../domain/entities/User.js";
+import {
+  toPublicUser,
+  type PublicUser
+} from "../../domain/entities/User.js";
+
 import type { UserRepository } from "../../domain/repositories/UserRepository.js";
 import { AppError } from "../errors/AppError.js";
 

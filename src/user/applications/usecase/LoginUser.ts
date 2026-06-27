@@ -1,9 +1,15 @@
-import { toPublicUser, type PublicUser } from "../../domain/entities/User.js";
+import {
+  toPublicUser,
+  type PublicUser
+} from "../../domain/entities/User.js";
+
 import type { UserRepository } from "../../domain/repositories/UserRepository.js";
+
 import type {
   PasswordHasher,
   TokenService
 } from "../ports/SecurityPorts.js";
+
 import { AppError } from "../errors/AppError.js";
 
 export interface LoginResult {
@@ -18,8 +24,8 @@ export class LoginUser {
     private readonly tokenService: TokenService
   ) {}
 
-  async execute(username: string, password: string): Promise<LoginResult> {
-    const user = await this.repository.findByUsername(username);
+  async execute(email: string, password: string): Promise<LoginResult> {
+    const user = await this.repository.findByEmail(email);
 
     if (!user || !user.active) {
       throw new AppError("Credenciales incorrectas", 401);

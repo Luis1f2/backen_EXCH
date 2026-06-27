@@ -11,7 +11,7 @@ import { createUserModule } from "../user/infrastructure/dependencies.js";
 
 export function createHttpApp(
   databasePool: Pool,
-  jwtSecret: string
+  jwtSecret: string,
 ): Express {
   const app = express();
 
@@ -32,7 +32,10 @@ export function createHttpApp(
 
   app.use(
     "/v1/api/users",
-    createUserModule(databasePool, jwtSecret)
+    createUserModule(
+      databasePool,
+      jwtSecret
+    )
   );
 
   app.use((_request, response) => {
@@ -73,7 +76,7 @@ export function createHttpApp(
     ) {
       response.status(409).json({
         success: false,
-        message: "El usuario, correo o teléfono ya está registrado"
+        message: "El correo ya está registrado"
       });
       return;
     }

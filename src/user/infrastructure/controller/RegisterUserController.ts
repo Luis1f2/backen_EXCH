@@ -1,12 +1,18 @@
 import type { NextFunction, Request, Response } from "express";
 import { z } from "zod";
+
 import type { RegisterUser } from "../../applications/usecase/RegisterUser.js";
 
 const registerSchema = z.object({
-  username: z.string().trim().min(3).max(50),
+  name: z.string().trim().min(3).max(100),
+  email: z.string().trim().email().max(150),
   password: z.string().min(8).max(72),
-  email: z.string().trim().email().max(254).nullable().optional(),
-  phone: z.string().trim().max(20).nullable().optional()
+  phone: z.string().trim().max(20).nullable().optional(),
+  userType: z.enum([
+    "turista_nacional",
+    "turista_extranjero",
+    "habitante_local"
+  ])
 });
 
 export class RegisterUserController {
