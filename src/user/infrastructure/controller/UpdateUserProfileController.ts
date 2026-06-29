@@ -2,7 +2,7 @@ import type { NextFunction, Request, Response } from "express";
 import { z } from "zod";
 
 import type { UpdateUserProfile } from "../../applications/usecase/UpdateUserProfile.js";
-import type { AuthenticatedRequest } from "./AuthenticatedRequest.js";
+import type { AuthenticatedRequest } from "../../../http/middlewares/AuthenticatedRequest.js";
 
 const updateSchema = z.object({
   name: z.string().trim().min(3).max(100).optional(),

@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import type { GetUserProfile } from "../../applications/usecase/GetUserProfile.js";
-import type { AuthenticatedRequest } from "./AuthenticatedRequest.js";
+import type { AuthenticatedRequest } from "../../../http/middlewares/AuthenticatedRequest.js";
 
 export class GetUserProfileController {
   constructor(private readonly getUserProfile: GetUserProfile) {}
