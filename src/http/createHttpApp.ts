@@ -7,7 +7,9 @@ import type { Pool } from "mysql2/promise";
 import { ZodError } from "zod";
 
 import { AppError } from "../user/applications/errors/AppError.js";
-import { createUserModule } from "../user/infrastructure/dependencies.js";
+import { createUserModule } from "../user/infrastructure/dependences.js";
+import { createLocationModule } from "../location/infrastructure/dependences.js";
+import { createDestinationModule } from "../destination/infrastructure/dependences.js";
 
 export function createHttpApp(
   databasePool: Pool,
@@ -45,6 +47,15 @@ export function createHttpApp(
     });
   });
 
+  app.use(
+  "/v1/api/locations",
+  createLocationModule(databasePool, jwtSecret)
+  );
+
+  app.use(
+  "/v1/api/destinations",
+  createDestinationModule(databasePool, jwtSecret)
+  );
   const errorHandler: ErrorRequestHandler = (
     error,
     _request,
