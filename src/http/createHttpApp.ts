@@ -10,6 +10,9 @@ import { AppError } from "../user/applications/errors/AppError.js";
 import { createUserModule } from "../user/infrastructure/dependences.js";
 import { createLocationModule } from "../location/infrastructure/dependences.js";
 import { createDestinationModule } from "../destination/infrastructure/dependences.js";
+import { createBusinessModule } from "../business/infrastructure/dependences.js";
+import { createReviewModule } from "../review/infrastructure/dependences.js";
+
 
 export function createHttpApp(
   databasePool: Pool,
@@ -53,9 +56,20 @@ export function createHttpApp(
   );
 
   app.use(
+  "/v1/api/reviews",
+  createReviewModule(databasePool, jwtSecret)
+  );
+
+  app.use(
   "/v1/api/destinations",
   createDestinationModule(databasePool, jwtSecret)
   );
+
+  app.use(
+  "/v1/api/businesses",
+  createBusinessModule(databasePool, jwtSecret)
+  );
+
   const errorHandler: ErrorRequestHandler = (
     error,
     _request,
