@@ -63,11 +63,15 @@ export class MySqlUserRepository implements UserRepository {
   }
 
   async findById(id: string): Promise<User | null> {
-    return this.findOne("id = ?", [id]);
+    return this.findOne("id = ?", [id], { soloActivos: true });
   }
 
+  // El correo es unico para siempre en la tabla (uq_usuario_email no distingue
+  // activo), asi que la busqueda debe ver tambien cuentas borradas: si no, el
+  // registro/actualizacion fallaria con el error generico de MySQL en vez de
+  // un mensaje claro de "correo ya registrado".
   async findByEmail(email: string): Promise<User | null> {
-    return this.findOne("email = ?", [email]);
+    return this.findOne("email = ?", [email], { soloActivos: false });
   }
 
   async findUserTypeIdByName(name: string): Promise<string | null> {
@@ -141,8 +145,11 @@ export class MySqlUserRepository implements UserRepository {
 
   private async findOne(
     condition: string,
-    values: SqlValue[]
+    values: SqlValue[],
+    options: { soloActivos: boolean }
   ): Promise<User | null> {
+    const filtroActivo = options.soloActivos ? "AND activo = 1" : "";
+
     const [rows] = await this.databasePool.execute<UserRow[]>(
       `SELECT
         id,
@@ -156,7 +163,7 @@ export class MySqlUserRepository implements UserRepository {
         activo
        FROM usuario
        WHERE ${condition}
-       AND activo = 1
+       ${filtroActivo}
        LIMIT 1`,
       values
     );
