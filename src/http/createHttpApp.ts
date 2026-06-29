@@ -8,6 +8,7 @@ import { ZodError } from "zod";
 
 import { AppError } from "../user/applications/errors/AppError.js";
 import { createUserModule } from "../user/infrastructure/dependencies.js";
+import { verifyDatabaseConnection } from "../database/databasePool.js";
 
 export function createHttpApp(
   databasePool: Pool,
@@ -21,7 +22,7 @@ export function createHttpApp(
   app.use(express.urlencoded({ extended: true }));
 
   app.get("/v1/api/health", async (_request, response) => {
-    await databasePool.query("SELECT 1");
+    await verifyDatabaseConnection(databasePool);
 
     response.status(200).json({
       success: true,

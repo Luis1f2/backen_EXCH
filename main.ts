@@ -1,11 +1,12 @@
 import "dotenv/config";
 import { databasePool, httpApp } from "./src/app.js";
+import { verifyDatabaseConnection } from "./src/database/databasePool.js";
 
 const port = Number(process.env.PORT ?? 3000);
 
 async function bootstrap(): Promise<void> {
   try {
-    await databasePool.query("SELECT 1");
+    await verifyDatabaseConnection(databasePool);
 
     const server = httpApp.listen(port, () => {
       console.log(`API ejecutándose en http://localhost:${port}/v1`);
