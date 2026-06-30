@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import express, {
   type ErrorRequestHandler,
   type Express
@@ -20,6 +22,7 @@ import { createEventModule } from "../event/infrastructure/dependences.js";
 import { createStatModule } from "../stat/infrastructure/dependences.js";
 import { createAdminModule } from "../admin/infrastructure/dependences.js";
 import { createPromotionModule } from "../promotion/infrastructure/dependences.js";
+import { createUploadModule } from "../upload/infrastructure/dependences.js";
 import { verifyDatabaseConnection } from "../database/databasePool.js";
 
 export function createHttpApp(
@@ -32,6 +35,9 @@ export function createHttpApp(
 
   app.use(express.json({ limit: "1mb" }));
   app.use(express.urlencoded({ extended: true }));
+
+  const uploadsDir = path.resolve(__dirname, "../../uploads");
+  app.use("/uploads", express.static(uploadsDir));
 
   app.get("/v1/api/health", async (_request, response) => {
     await verifyDatabaseConnection(databasePool);
@@ -56,6 +62,7 @@ export function createHttpApp(
   app.use("/v1/api/stats",       createStatModule(databasePool, jwtSecret));
   app.use("/v1/api/admin",       createAdminModule(databasePool, jwtSecret));
   app.use("/v1/api/promotions",  createPromotionModule(databasePool, jwtSecret));
+  app.use("/v1/api/uploads",     createUploadModule(databasePool, jwtSecret));
 
   app.use((_request, response) => {
     response.status(404).json({

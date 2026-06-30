@@ -1,3 +1,11 @@
 .env
 node_modules
 /dist
+/uploads/negocios/*.jpg
+/uploads/negocios/*.jpeg
+/uploads/negocios/*.png
+/uploads/negocios/*.webp
+/uploads/resenas/*.jpg
+/uploads/resenas/*.jpeg
+/uploads/resenas/*.png
+/uploads/resenas/*.webp
