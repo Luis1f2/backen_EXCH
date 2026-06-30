@@ -6,8 +6,15 @@ import express, {
 import type { Pool } from "mysql2/promise";
 import { ZodError } from "zod";
 
-import { AppError } from "../user/applications/errors/AppError.js";
-import { createUserModule } from "../user/infrastructure/dependencies.js";
+import { AppError } from "../user/application/errors/AppError.js";
+import { createUserModule } from "../user/infrastructure/dependences.js";
+import { createLocationModule } from "../location/infrastructure/dependences.js";
+import { createDestinationModule } from "../destination/infrastructure/dependences.js";
+import { createBusinessModule } from "../business/infrastructure/dependences.js";
+import { createReviewModule } from "../review/infrastructure/dependences.js";
+import { createAlertModule } from "../alert/infrastructure/dependences.js";
+import { createRouteModule } from "../route/infrastructure/dependences.js";
+import { createFavoriteModule } from "../favorite/infrastructure/dependences.js";
 import { createDestinoModule } from "../destino/infrastructure/dependencies.js";
 import { verifyDatabaseConnection } from "../database/databasePool.js";
 
@@ -34,13 +41,17 @@ export function createHttpApp(
 
   app.use(
     "/v1/api/users",
-    createUserModule(
-      databasePool,
-      jwtSecret
-    )
+    createUserModule(databasePool, jwtSecret)
   );
 
-  app.use("/v1/api/destinos", createDestinoModule(databasePool));
+  app.use("/v1/api/routes",       createRouteModule(databasePool, jwtSecret));
+  app.use("/v1/api/favorites",    createFavoriteModule(databasePool, jwtSecret));
+  app.use("/v1/api/alerts",       createAlertModule(databasePool, jwtSecret));
+  app.use("/v1/api/locations",    createLocationModule(databasePool, jwtSecret));
+  app.use("/v1/api/reviews",      createReviewModule(databasePool, jwtSecret));
+  app.use("/v1/api/destinations", createDestinationModule(databasePool, jwtSecret));
+  app.use("/v1/api/businesses",   createBusinessModule(databasePool, jwtSecret));
+  app.use("/v1/api/destinos",     createDestinoModule(databasePool));
 
   app.use((_request, response) => {
     response.status(404).json({

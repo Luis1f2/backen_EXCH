@@ -1,6 +1,6 @@
 import type { Destino } from "../../domain/entities/Destino.js";
 import type { DestinoRepository } from "../../domain/repositories/DestinoRepository.js";
-import { AppError } from "../../../user/applications/errors/AppError.js";
+import { AppError } from "../../../user/application/errors/AppError.js";
 
 export class ObtenerDestino {
   constructor(private readonly repository: DestinoRepository) {}
