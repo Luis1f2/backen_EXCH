@@ -12,6 +12,9 @@ import { createLocationModule } from "../location/infrastructure/dependences.js"
 import { createDestinationModule } from "../destination/infrastructure/dependences.js";
 import { createBusinessModule } from "../business/infrastructure/dependences.js";
 import { createReviewModule } from "../review/infrastructure/dependences.js";
+import { createAlertModule } from "../alert/infrastructure/dependences.js";
+import { createRouteModule } from "../route/infrastructure/dependences.js";
+import { createFavoriteModule } from "../favorite/infrastructure/dependences.js";
 
 
 export function createHttpApp(
@@ -43,12 +46,20 @@ export function createHttpApp(
     )
   );
 
-  app.use((_request, response) => {
-    response.status(404).json({
-      success: false,
-      message: "Ruta no encontrada"
-    });
-  });
+  app.use(
+  "/v1/api/routes",
+  createRouteModule(databasePool, jwtSecret)
+  );
+
+  app.use(
+  "/v1/api/favorites",
+  createFavoriteModule(databasePool, jwtSecret)
+  );
+
+  app.use(
+  "/v1/api/alerts",
+  createAlertModule(databasePool, jwtSecret)
+  );
 
   app.use(
   "/v1/api/locations",
@@ -69,6 +80,13 @@ export function createHttpApp(
   "/v1/api/businesses",
   createBusinessModule(databasePool, jwtSecret)
   );
+
+    app.use((_request, response) => {
+    response.status(404).json({
+      success: false,
+      message: "Ruta no encontrada"
+    });
+  });
 
   const errorHandler: ErrorRequestHandler = (
     error,
