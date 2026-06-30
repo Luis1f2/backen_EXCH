@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
-import type { DeleteUserProfile } from "../../applications/usecase/DeleteUserProfile.js";
+import type { DeleteUserProfile } from "../../application/usecase/DeleteUserProfile.js";
 import type { AuthenticatedRequest } from "../../../http/middlewares/AuthenticatedRequest.js";
 export class DeleteUserProfileController {
   constructor(private readonly deleteUserProfile: DeleteUserProfile) {}

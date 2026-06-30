@@ -39,11 +39,7 @@ export function createHttpApp(
     });
   });
 
-  app.use(
-    "/v1/api/users",
-    createUserModule(databasePool, jwtSecret)
-  );
-
+  app.use("/v1/api/users",        createUserModule(databasePool, jwtSecret));
   app.use("/v1/api/routes",       createRouteModule(databasePool, jwtSecret));
   app.use("/v1/api/favorites",    createFavoriteModule(databasePool, jwtSecret));
   app.use("/v1/api/alerts",       createAlertModule(databasePool, jwtSecret));

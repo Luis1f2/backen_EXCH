@@ -1,6 +1,6 @@
 import { Router } from "express";
 
-import type { TokenService } from "../../applications/ports/SecurityPorts.js";
+import type { TokenService } from "../../application/ports/SecurityPorts.js";
 
 import type { RegisterUserController } from "../controller/RegisterUserController.js";
 import type { LoginUserController } from "../controller/LoginUserController.js";

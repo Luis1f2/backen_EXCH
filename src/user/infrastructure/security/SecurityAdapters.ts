@@ -4,9 +4,9 @@ import jwt, { type JwtPayload } from "jsonwebtoken";
 import type {
   PasswordHasher,
   TokenService
-} from "../../applications/ports/SecurityPorts.js";
+} from "../../application/ports/SecurityPorts.js";
 
-import { AppError } from "../../applications/errors/AppError.js";
+import { AppError } from "../../application/errors/AppError.js";
 
 export class BcryptPasswordHasher implements PasswordHasher {
   async hash(password: string): Promise<string> {

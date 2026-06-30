@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import { z } from "zod";
 
-import type { RegisterUser } from "../../applications/usecase/RegisterUser.js";
+import type { RegisterUser } from "../../application/usecase/RegisterUser.js";
 
 const registerSchema = z.object({
   name: z.string().trim().min(3).max(100),

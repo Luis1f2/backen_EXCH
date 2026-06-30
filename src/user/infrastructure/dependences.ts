@@ -1,10 +1,10 @@
 import type { Pool } from "mysql2/promise";
 
-import { RegisterUser } from "../applications/usecase/RegisterUser.js";
-import { LoginUser } from "../applications/usecase/LoginUser.js";
-import { GetUserProfile } from "../applications/usecase/GetUserProfile.js";
-import { UpdateUserProfile } from "../applications/usecase/UpdateUserProfile.js";
-import { DeleteUserProfile } from "../applications/usecase/DeleteUserProfile.js";
+import { RegisterUser } from "../application/usecase/RegisterUser.js";
+import { LoginUser } from "../application/usecase/LoginUser.js";
+import { GetUserProfile } from "../application/usecase/GetUserProfile.js";
+import { UpdateUserProfile } from "../application/usecase/UpdateUserProfile.js";
+import { DeleteUserProfile } from "../application/usecase/DeleteUserProfile.js";
 
 import { MySqlUserRepository } from "./Mysql/MySqlUserRepository.js";
 
