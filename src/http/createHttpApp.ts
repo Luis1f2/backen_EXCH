@@ -6,9 +6,16 @@ import express, {
 import type { Pool } from "mysql2/promise";
 import { ZodError } from "zod";
 
-import { AppError } from "../user/applications/errors/AppError.js";
-import { createUserModule } from "../user/infrastructure/dependencies.js";
-import { verifyDatabaseConnection } from "../database/databasePool.js";
+import { AppError } from "../user/application/errors/AppError.js";
+import { createUserModule } from "../user/infrastructure/dependences.js";
+import { createLocationModule } from "../location/infrastructure/dependences.js";
+import { createDestinationModule } from "../destination/infrastructure/dependences.js";
+import { createBusinessModule } from "../business/infrastructure/dependences.js";
+import { createReviewModule } from "../review/infrastructure/dependences.js";
+import { createAlertModule } from "../alert/infrastructure/dependences.js";
+import { createRouteModule } from "../route/infrastructure/dependences.js";
+import { createFavoriteModule } from "../favorite/infrastructure/dependences.js";
+
 
 export function createHttpApp(
   databasePool: Pool,
@@ -22,7 +29,7 @@ export function createHttpApp(
   app.use(express.urlencoded({ extended: true }));
 
   app.get("/v1/api/health", async (_request, response) => {
-    await verifyDatabaseConnection(databasePool);
+    await databasePool.query("SELECT 1");
 
     response.status(200).json({
       success: true,
@@ -39,7 +46,42 @@ export function createHttpApp(
     )
   );
 
-  app.use((_request, response) => {
+  app.use(
+  "/v1/api/routes",
+  createRouteModule(databasePool, jwtSecret)
+  );
+
+  app.use(
+  "/v1/api/favorites",
+  createFavoriteModule(databasePool, jwtSecret)
+  );
+
+  app.use(
+  "/v1/api/alerts",
+  createAlertModule(databasePool, jwtSecret)
+  );
+
+  app.use(
+  "/v1/api/locations",
+  createLocationModule(databasePool, jwtSecret)
+  );
+
+  app.use(
+  "/v1/api/reviews",
+  createReviewModule(databasePool, jwtSecret)
+  );
+
+  app.use(
+  "/v1/api/destinations",
+  createDestinationModule(databasePool, jwtSecret)
+  );
+
+  app.use(
+  "/v1/api/businesses",
+  createBusinessModule(databasePool, jwtSecret)
+  );
+
+    app.use((_request, response) => {
     response.status(404).json({
       success: false,
       message: "Ruta no encontrada"
