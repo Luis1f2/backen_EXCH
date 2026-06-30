@@ -16,6 +16,10 @@ import { createAlertModule } from "../alert/infrastructure/dependences.js";
 import { createRouteModule } from "../route/infrastructure/dependences.js";
 import { createFavoriteModule } from "../favorite/infrastructure/dependences.js";
 import { createDestinoModule } from "../destino/infrastructure/dependencies.js";
+import { createEventModule } from "../event/infrastructure/dependences.js";
+import { createStatModule } from "../stat/infrastructure/dependences.js";
+import { createAdminModule } from "../admin/infrastructure/dependences.js";
+import { createPromotionModule } from "../promotion/infrastructure/dependences.js";
 import { verifyDatabaseConnection } from "../database/databasePool.js";
 
 export function createHttpApp(
@@ -47,7 +51,11 @@ export function createHttpApp(
   app.use("/v1/api/reviews",      createReviewModule(databasePool, jwtSecret));
   app.use("/v1/api/destinations", createDestinationModule(databasePool, jwtSecret));
   app.use("/v1/api/businesses",   createBusinessModule(databasePool, jwtSecret));
-  app.use("/v1/api/destinos",     createDestinoModule(databasePool));
+  app.use("/v1/api/destinos",    createDestinoModule(databasePool));
+  app.use("/v1/api/events",      createEventModule(databasePool, jwtSecret));
+  app.use("/v1/api/stats",       createStatModule(databasePool, jwtSecret));
+  app.use("/v1/api/admin",       createAdminModule(databasePool, jwtSecret));
+  app.use("/v1/api/promotions",  createPromotionModule(databasePool, jwtSecret));
 
   app.use((_request, response) => {
     response.status(404).json({

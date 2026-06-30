@@ -18,6 +18,9 @@ import { ListMyBusinessesController } from "./controller/ListMyBusinessesControl
 import { UpdateBusinessController } from "./controller/UpdateBusinessController.js";
 import { DeleteBusinessController } from "./controller/DeleteBusinessController.js";
 
+import { ValidateBusiness } from "../application/usecase/ValidateBusiness.js";
+import { ValidateBusinessController } from "./controller/ValidateBusinessController.js";
+
 import { createBusinessRoutes } from "./routes/businessRoutes.js";
 
 export function createBusinessModule(
@@ -28,25 +31,14 @@ export function createBusinessModule(
   const tokenService = new JwtTokenService(jwtSecret);
 
   const controllers = {
-    create: new CreateBusinessController(
-      new CreateBusiness(repository)
-    ),
-    get: new GetBusinessController(
-      new GetBusiness(repository)
-    ),
-    list: new ListBusinessesController(
-      new ListBusinesses(repository)
-    ),
-    listMine: new ListMyBusinessesController(
-      new ListMyBusinesses(repository)
-    ),
-    update: new UpdateBusinessController(
-      new UpdateBusiness(repository)
-    ),
-    delete: new DeleteBusinessController(
-      new DeleteBusiness(repository)
-    )
+    create: new CreateBusinessController(new CreateBusiness(repository)),
+    get: new GetBusinessController(new GetBusiness(repository)),
+    list: new ListBusinessesController(new ListBusinesses(repository)),
+    listMine: new ListMyBusinessesController(new ListMyBusinesses(repository)),
+    update: new UpdateBusinessController(new UpdateBusiness(repository)),
+    delete: new DeleteBusinessController(new DeleteBusiness(repository)),
+    validate: new ValidateBusinessController(new ValidateBusiness(pool))
   };
 
-  return createBusinessRoutes(controllers, tokenService);
+  return createBusinessRoutes(controllers, tokenService, pool);
 }

@@ -10,6 +10,9 @@ import type { ListBusinessesController } from "../controller/ListBusinessesContr
 import type { ListMyBusinessesController } from "../controller/ListMyBusinessesController.js";
 import type { UpdateBusinessController } from "../controller/UpdateBusinessController.js";
 import type { DeleteBusinessController } from "../controller/DeleteBusinessController.js";
+import type { ValidateBusinessController } from "../controller/ValidateBusinessController.js";
+import { createAdminMiddleware } from "../../../http/middlewares/createAdminMiddleware.js";
+import type { Pool } from "mysql2/promise";
 
 interface BusinessControllers {
   create: CreateBusinessController;
@@ -18,11 +21,13 @@ interface BusinessControllers {
   listMine: ListMyBusinessesController;
   update: UpdateBusinessController;
   delete: DeleteBusinessController;
+  validate: ValidateBusinessController;
 }
 
 export function createBusinessRoutes(
   controllers: BusinessControllers,
-  tokenService: TokenService
+  tokenService: TokenService,
+  pool?: Pool
 ): Router {
   const router = Router();
   const authenticate = createAuthenticateMiddleware(tokenService);
@@ -34,6 +39,11 @@ export function createBusinessRoutes(
   router.post("/", authenticate, controllers.create.execute);
   router.patch("/:id", authenticate, controllers.update.execute);
   router.delete("/:id", authenticate, controllers.delete.execute);
+
+  if (pool) {
+    const adminOnly = createAdminMiddleware(pool, tokenService);
+    router.patch("/:id/validate", adminOnly, controllers.validate.execute);
+  }
 
   return router;
 }
