@@ -1,6 +1,6 @@
 import type { Destination } from "../../domain/entities/Destination.js";
 import type { DestinationRepository } from "../../domain/repositories/DestinationRepository.js";
-import { AppError } from "../../../user/applications/errors/AppError.js";
+import { AppError } from "../../../user/application/errors/AppError.js";
 
 export class GetDestination {
   constructor(private readonly repository: DestinationRepository) {}

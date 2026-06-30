@@ -5,7 +5,7 @@ import type {
   UpdateLocationData
 } from "../../domain/repositories/LocationRepository.js";
 
-import { AppError } from "../../../user/applications/errors/AppError.js";
+import { AppError } from "../../../user/application/errors/AppError.js";
 
 export interface UpdateLocationInput {
   latitude?: number;

@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import { z } from "zod";
 
-import type { LoginUser } from "../../applications/usecase/LoginUser.js";
+import type { LoginUser } from "../../application/usecase/LoginUser.js";
 
 const loginSchema = z.object({
   email: z.string().trim().email().max(150),

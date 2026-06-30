@@ -6,7 +6,7 @@ import type {
   ReviewRepository
 } from "../../domain/repositories/ReviewRepository.js";
 
-import { AppError } from "../../../user/applications/errors/AppError.js";
+import { AppError } from "../../../user/application/errors/AppError.js";
 
 export interface CreateReviewInput {
   targetType: "destination" | "business" | "location";

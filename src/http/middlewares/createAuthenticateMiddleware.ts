@@ -4,8 +4,8 @@ import type {
   Response
 } from "express";
 
-import type { TokenService } from "../../user/applications/ports/SecurityPorts.js";
-import { AppError } from "../../user/applications/errors/AppError.js";
+import type { TokenService } from "../../user/application/ports/SecurityPorts.js";
+import { AppError } from "../../user/application/errors/AppError.js";
 
 import type { AuthenticatedRequest } from "./AuthenticatedRequest.js";
 

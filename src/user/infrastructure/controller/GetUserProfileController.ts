@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
-import type { GetUserProfile } from "../../applications/usecase/GetUserProfile.js";
+import type { GetUserProfile } from "../../application/usecase/GetUserProfile.js";
 import type { AuthenticatedRequest } from "../../../http/middlewares/AuthenticatedRequest.js";
 
 export class GetUserProfileController {

@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import { z } from "zod";
 
-import type { UpdateUserProfile } from "../../applications/usecase/UpdateUserProfile.js";
+import type { UpdateUserProfile } from "../../application/usecase/UpdateUserProfile.js";
 import type { AuthenticatedRequest } from "../../../http/middlewares/AuthenticatedRequest.js";
 
 const updateSchema = z.object({

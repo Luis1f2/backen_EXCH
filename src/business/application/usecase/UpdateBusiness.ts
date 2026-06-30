@@ -5,7 +5,7 @@ import type {
   UpdateBusinessData
 } from "../../domain/repositories/BusinessRepository.js";
 
-import { AppError } from "../../../user/applications/errors/AppError.js";
+import { AppError } from "../../../user/application/errors/AppError.js";
 
 export interface UpdateBusinessInput {
   name?: string;

@@ -5,7 +5,7 @@ import type {
   UpdateDestinationData
 } from "../../domain/repositories/DestinationRepository.js";
 
-import { AppError } from "../../../user/applications/errors/AppError.js";
+import { AppError } from "../../../user/application/errors/AppError.js";
 
 export interface UpdateDestinationInput {
   name?: string;

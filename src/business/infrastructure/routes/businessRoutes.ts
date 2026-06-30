@@ -1,6 +1,6 @@
 import { Router } from "express";
 
-import type { TokenService } from "../../../user/applications/ports/SecurityPorts.js";
+import type { TokenService } from "../../../user/application/ports/SecurityPorts.js";
 
 import { createAuthenticateMiddleware } from "../../../http/middlewares/createAuthenticateMiddleware.js";
 

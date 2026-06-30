@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import type { Business } from "../../domain/entities/Business.js";
 import type { BusinessRepository } from "../../domain/repositories/BusinessRepository.js";
-import { AppError } from "../../../user/applications/errors/AppError.js";
+import { AppError } from "../../../user/application/errors/AppError.js";
 
 export interface CreateBusinessInput {
   name: string;

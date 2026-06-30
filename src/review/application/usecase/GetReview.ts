@@ -1,6 +1,6 @@
 import type { Review } from "../../domain/entities/Review.js";
 import type { ReviewRepository } from "../../domain/repositories/ReviewRepository.js";
-import { AppError } from "../../../user/applications/errors/AppError.js";
+import { AppError } from "../../../user/application/errors/AppError.js";
 
 export class GetReview {
   constructor(private readonly repository: ReviewRepository) {}

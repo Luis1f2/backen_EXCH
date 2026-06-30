@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import type { Location } from "../../domain/entities/Location.js";
 import type { LocationRepository } from "../../domain/repositories/LocationRepository.js";
-import { AppError } from "../../../user/applications/errors/AppError.js";
+import { AppError } from "../../../user/application/errors/AppError.js";
 
 export interface CreateLocationInput {
   latitude: number;
