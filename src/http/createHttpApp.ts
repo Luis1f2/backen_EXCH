@@ -8,6 +8,7 @@ import { ZodError } from "zod";
 
 import { AppError } from "../user/applications/errors/AppError.js";
 import { createUserModule } from "../user/infrastructure/dependencies.js";
+import { createDestinoModule } from "../destino/infrastructure/dependencies.js";
 import { verifyDatabaseConnection } from "../database/databasePool.js";
 
 export function createHttpApp(
@@ -38,6 +39,8 @@ export function createHttpApp(
       jwtSecret
     )
   );
+
+  app.use("/v1/api/destinos", createDestinoModule(databasePool));
 
   app.use((_request, response) => {
     response.status(404).json({
