@@ -5,13 +5,28 @@ import type { UpdateUserStatus } from "../../application/usecase/UpdateUserStatu
 
 const paramsSchema = z.object({ id: z.string().min(1) });
 
-const bodySchema = z.object({
-  activo: z.boolean().optional(),
-  tipoUsuarioNombre: z.enum([
-    "turista_nacional", "turista_extranjero",
-    "habitante_local", "admin_plataforma"
-  ]).optional()
-});
+const bodySchema = z
+  .object({
+    activo: z.boolean().optional(),
+
+    tipoUsuarioNombre: z
+      .enum([
+        'turista_nacional',
+        'turista_extranjero',
+        'habitante_local',
+        'admin_negocio',
+        'admin_plataforma',
+      ])
+      .optional(),
+  })
+  .refine(
+    (body) =>
+      body.activo !== undefined ||
+      body.tipoUsuarioNombre !== undefined,
+    {
+      message: 'Debes proporcionar activo o tipoUsuarioNombre',
+    },
+  );
 
 export class UpdateUserStatusController {
   constructor(private readonly updateUserStatus: UpdateUserStatus) {}
