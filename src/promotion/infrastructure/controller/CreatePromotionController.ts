@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import type { CreatePromotion } from "../../application/usecase/CreatePromotion.js";
 import type { AuthenticatedRequest } from "../../../http/middlewares/AuthenticatedRequest.js";
+import { OneSignalService } from "../../../notifications/OneSignalService.js";
 
 const bodySchema = z.object({
   titulo: z.string().trim().min(3).max(120),
@@ -14,6 +15,8 @@ const bodySchema = z.object({
 });
 
 export class CreatePromotionController {
+  private readonly notifications = new OneSignalService();
+
   constructor(private readonly createPromotion: CreatePromotion) {}
 
   execute = async (
@@ -27,6 +30,8 @@ export class CreatePromotionController {
       const promotion = await this.createPromotion.execute(userId, input);
 
       response.status(201).json({ success: true, data: promotion });
+
+      this.notifications.notifyNewPromotion(promotion.titulo, promotion.negocioNombre);
     } catch (error) {
       next(error);
     }
