@@ -306,21 +306,46 @@ export class MySqlBusinessRepository implements BusinessRepository {
     return Number(rows[0]?.total ?? 0) > 0;
   }
 
-  async isUserBusinessAdministrator(
-    userId: string,
-    businessId: string
-  ): Promise<boolean> {
-    const [rows] = await this.databasePool.execute<ExistsRow[]>(
-      `SELECT COUNT(*) AS total
-       FROM negocio_administrador
-       WHERE usuario_id = ?
-       AND negocio_id = ?
-       AND activo = 1`,
-      [userId, businessId]
-    );
+async isUserBusinessOwner(
+  userId: string,
+  businessId: string
+): Promise<boolean> {
+  const [rows] = await this.databasePool.execute<ExistsRow[]>(
+    `SELECT COUNT(*) AS total
+     FROM negocio_administrador na
+     INNER JOIN negocio_turistico n
+       ON n.id = na.negocio_id
+     WHERE na.usuario_id = ?
+       AND na.negocio_id = ?
+       AND na.rol = 'propietario'
+       AND na.activo = 1
+       AND n.activo = 1`,
+    [userId, businessId]
+  );
 
-    return Number(rows[0]?.total ?? 0) > 0;
-  }
+  return Number(rows[0]?.total ?? 0) > 0;
+}
+
+async isUserBusinessAdministrator(
+  userId: string,
+  businessId: string
+): Promise<boolean> {
+  const [rows] = await this.databasePool.execute<ExistsRow[]>(
+    `SELECT COUNT(*) AS total
+     FROM negocio_administrador na
+     INNER JOIN negocio_turistico n
+       ON n.id = na.negocio_id
+     WHERE na.usuario_id = ?
+       AND na.negocio_id = ?
+       AND na.activo = 1
+       AND na.estado_solicitud = 'aprobada'
+       AND n.activo = 1
+       AND n.esta_verificado = 1`,
+    [userId, businessId]
+  );
+
+  return Number(rows[0]?.total ?? 0) > 0;
+}
 
   private mapToDomain(row: BusinessRow): Business {
     return {

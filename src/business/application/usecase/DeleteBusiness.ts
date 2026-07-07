@@ -14,12 +14,11 @@ export class DeleteBusiness {
       throw new AppError("Negocio no encontrado", 404);
     }
 
-    const hasPermission =
-      await this.repository.isUserBusinessAdministrator(
-        userId,
-        businessId
-      );
-
+  const hasPermission =
+     await this.repository.isUserBusinessOwner(
+      userId,
+      businessId
+  );
     if (!hasPermission) {
       throw new AppError("No tienes permisos para eliminar este negocio", 403);
     }
