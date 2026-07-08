@@ -4,7 +4,11 @@ import type {
   RowDataPacket
 } from "mysql2/promise";
 
-import type { User } from "../../domain/entities/User.js";
+import type {
+  User,
+  UserType,
+} from "../../domain/entities/User.js";
+
 
 import type {
   CreateUserData,
@@ -18,6 +22,7 @@ interface UserRow extends RowDataPacket {
   email: string;
   password_hash: string;
   tipo_usuario_id: string;
+  tipo_usuario_nombre: UserType;
   telefono: string | null;
   fecha_registro: Date;
   es_premium: number;
@@ -63,16 +68,20 @@ export class MySqlUserRepository implements UserRepository {
   }
 
   async findById(id: string): Promise<User | null> {
-    return this.findOne("id = ?", [id], { soloActivos: true });
-  }
+  return this.findOne("u.id = ?", [id], {
+    soloActivos: true,
+  });
+}
 
   // El correo es unico para siempre en la tabla (uq_usuario_email no distingue
   // activo), asi que la busqueda debe ver tambien cuentas borradas: si no, el
   // registro/actualizacion fallaria con el error generico de MySQL en vez de
   // un mensaje claro de "correo ya registrado".
-  async findByEmail(email: string): Promise<User | null> {
-    return this.findOne("email = ?", [email], { soloActivos: false });
-  }
+async findByEmail(email: string): Promise<User | null> {
+  return this.findOne("u.email = ?", [email], {
+    soloActivos: false,
+  });
+}
 
   async findUserTypeIdByName(name: string): Promise<string | null> {
     const [rows] = await this.databasePool.execute<UserTypeRow[]>(
@@ -143,47 +152,55 @@ export class MySqlUserRepository implements UserRepository {
     return result.affectedRows > 0;
   }
 
-  private async findOne(
-    condition: string,
-    values: SqlValue[],
-    options: { soloActivos: boolean }
-  ): Promise<User | null> {
-    const filtroActivo = options.soloActivos ? "AND activo = 1" : "";
+private async findOne(
+  condition: string,
+  values: SqlValue[],
+  options: { soloActivos: boolean }
+): Promise<User | null> {
+  const filtroActivo = options.soloActivos
+    ? "AND u.activo = 1"
+    : "";
 
-    const [rows] = await this.databasePool.execute<UserRow[]>(
-      `SELECT
-        id,
-        nombre,
-        email,
-        password_hash,
-        tipo_usuario_id,
-        telefono,
-        fecha_registro,
-        es_premium,
-        activo
-       FROM usuario
-       WHERE ${condition}
-       ${filtroActivo}
-       LIMIT 1`,
-      values
-    );
+  const [rows] = await this.databasePool.execute<UserRow[]>(
+    `
+      SELECT
+        u.id,
+        u.nombre,
+        u.email,
+        u.password_hash,
+        u.tipo_usuario_id,
+        tu.nombre AS tipo_usuario_nombre,
+        u.telefono,
+        u.fecha_registro,
+        u.es_premium,
+        u.activo
+      FROM usuario u
+      INNER JOIN tipo_usuario tu
+        ON tu.id = u.tipo_usuario_id
+      WHERE ${condition}
+        ${filtroActivo}
+      LIMIT 1
+    `,
+    values
+  );
 
-    const row = rows[0];
+  const row = rows[0];
 
-    return row ? this.mapToDomain(row) : null;
-  }
+  return row ? this.mapToDomain(row) : null;
+}
+private mapToDomain(row: UserRow): User {
+  return {
+    id: row.id,
+    name: row.nombre,
+    email: row.email,
+    phone: row.telefono,
+    passwordHash: row.password_hash,
+    userTypeId: row.tipo_usuario_id,
+    userType: row.tipo_usuario_nombre,
+    registeredAt: row.fecha_registro,
+    isPremium: Boolean(row.es_premium),
+    active: Boolean(row.activo),
+  };
+}
 
-  private mapToDomain(row: UserRow): User {
-    return {
-      id: row.id,
-      name: row.nombre,
-      email: row.email,
-      phone: row.telefono,
-      passwordHash: row.password_hash,
-      userTypeId: row.tipo_usuario_id,
-      registeredAt: row.fecha_registro,
-      isPremium: Boolean(row.es_premium),
-      active: Boolean(row.activo)
-    };
-  }
 }

@@ -8,8 +8,12 @@ import { ListBusinesses } from "../application/usecase/ListBusinesses.js";
 import { ListMyBusinesses } from "../application/usecase/ListMyBusinesses.js";
 import { UpdateBusiness } from "../application/usecase/UpdateBusiness.js";
 import { DeleteBusiness } from "../application/usecase/DeleteBusiness.js";
+import { ValidateBusiness } from "../application/usecase/ValidateBusiness.js";
+import { GetBusinessSchedules } from "../application/usecase/GetBusinessSchedules.js";
+import { ReplaceBusinessSchedules } from "../application/usecase/ReplaceBusinessSchedules.js";
 
 import { MySqlBusinessRepository } from "./mysql/MySqlBusinessRepository.js";
+import { MySqlBusinessScheduleRepository } from "./mysql/MySqlBusinessScheduleRepository.js";
 
 import { CreateBusinessController } from "./controller/CreateBusinessController.js";
 import { GetBusinessController } from "./controller/GetBusinessController.js";
@@ -17,9 +21,9 @@ import { ListBusinessesController } from "./controller/ListBusinessesController.
 import { ListMyBusinessesController } from "./controller/ListMyBusinessesController.js";
 import { UpdateBusinessController } from "./controller/UpdateBusinessController.js";
 import { DeleteBusinessController } from "./controller/DeleteBusinessController.js";
-
-import { ValidateBusiness } from "../application/usecase/ValidateBusiness.js";
 import { ValidateBusinessController } from "./controller/ValidateBusinessController.js";
+import { GetBusinessSchedulesController } from "./controller/GetBusinessSchedulesController.js";
+import { ReplaceBusinessSchedulesController } from "./controller/ReplaceBusinessSchedulesController.js";
 
 import { createBusinessRoutes } from "./routes/businessRoutes.js";
 
@@ -27,18 +31,64 @@ export function createBusinessModule(
   pool: Pool,
   jwtSecret: string
 ) {
-  const repository = new MySqlBusinessRepository(pool);
-  const tokenService = new JwtTokenService(jwtSecret);
+  const repository =
+    new MySqlBusinessRepository(pool);
+
+  const scheduleRepository =
+    new MySqlBusinessScheduleRepository(pool);
+
+  const tokenService =
+    new JwtTokenService(jwtSecret);
 
   const controllers = {
-    create: new CreateBusinessController(new CreateBusiness(repository)),
-    get: new GetBusinessController(new GetBusiness(repository)),
-    list: new ListBusinessesController(new ListBusinesses(repository)),
-    listMine: new ListMyBusinessesController(new ListMyBusinesses(repository)),
-    update: new UpdateBusinessController(new UpdateBusiness(repository)),
-    delete: new DeleteBusinessController(new DeleteBusiness(repository)),
-    validate: new ValidateBusinessController(new ValidateBusiness(pool))
+    create: new CreateBusinessController(
+      new CreateBusiness(repository)
+    ),
+
+    get: new GetBusinessController(
+      new GetBusiness(repository)
+    ),
+
+    list: new ListBusinessesController(
+      new ListBusinesses(repository)
+    ),
+
+    listMine: new ListMyBusinessesController(
+      new ListMyBusinesses(repository)
+    ),
+
+    update: new UpdateBusinessController(
+      new UpdateBusiness(repository)
+    ),
+
+    delete: new DeleteBusinessController(
+      new DeleteBusiness(repository)
+    ),
+
+    validate: new ValidateBusinessController(
+      new ValidateBusiness(pool)
+    ),
+
+    getSchedules:
+      new GetBusinessSchedulesController(
+        new GetBusinessSchedules(
+          scheduleRepository,
+          repository
+        )
+      ),
+
+    replaceSchedules:
+      new ReplaceBusinessSchedulesController(
+        new ReplaceBusinessSchedules(
+          scheduleRepository,
+          repository
+        )
+      )
   };
 
-  return createBusinessRoutes(controllers, tokenService, pool);
+  return createBusinessRoutes(
+    controllers,
+    tokenService,
+    pool
+  );
 }

@@ -30,8 +30,11 @@ export interface ListBusinessesFilters {
 
 export interface BusinessRepository {
   create(data: CreateBusinessData): Promise<Business>;
+
   findById(id: string): Promise<Business | null>;
+
   list(filters: ListBusinessesFilters): Promise<Business[]>;
+
   listByAdministratorId(userId: string): Promise<Business[]>;
 
   update(
@@ -42,8 +45,22 @@ export interface BusinessRepository {
   delete(id: string): Promise<boolean>;
 
   findBusinessTypeIdByName(name: string): Promise<string | null>;
+
   locationExists(id: string): Promise<boolean>;
 
+  /**
+   * Comprueba que el usuario sea el propietario activo del negocio.
+   * Se utiliza para editar o eliminar el registro del negocio.
+   */
+  isUserBusinessOwner(
+    userId: string,
+    businessId: string
+  ): Promise<boolean>;
+
+  /**
+   * Comprueba que el usuario tenga acceso administrativo aprobado.
+   * Se utilizará para horarios, servicios, promociones y estadísticas.
+   */
   isUserBusinessAdministrator(
     userId: string,
     businessId: string
