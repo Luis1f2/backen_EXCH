@@ -90,7 +90,19 @@ export function createHttpApp(
     createPromotionModule(databasePool, jwtSecret),
   );
   app.use("/v1/api/uploads", createUploadModule(databasePool, jwtSecret));
-  app.use("/v1/api/payments", createPaymentModule(databasePool, jwtSecret));
+
+  const stripeSecretKey = process.env.STRIPE_SECRET_KEY?.trim();
+
+if (stripeSecretKey) {
+  app.use(
+    "/v1/api/payments",
+    createPaymentModule(databasePool, jwtSecret),
+  );
+} else {
+  console.warn(
+    "Stripe deshabilitado: falta STRIPE_SECRET_KEY en el archivo .env",
+  );
+}
 
   app.use((_request, response) => {
     response.status(404).json({
