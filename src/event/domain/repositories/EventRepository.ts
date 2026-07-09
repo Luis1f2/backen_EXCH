@@ -20,8 +20,14 @@ export interface UpdateEventData {
   categoriaId?: string | null;
 }
 
+export interface ListEventsFilter {
+  proximasOnly?: boolean;
+  categoriaId?: string;
+}
+
 export interface EventRepository {
-  list(proximasOnly?: boolean): Promise<Event[]>;
+  list(filters?: ListEventsFilter): Promise<Event[]>;
+  categoryCanBeUsedForEvents(categoryId: string): Promise<boolean>;
   findById(id: string): Promise<Event | null>;
   create(data: CreateEventData): Promise<Event>;
   update(id: string, data: UpdateEventData): Promise<Event | null>;

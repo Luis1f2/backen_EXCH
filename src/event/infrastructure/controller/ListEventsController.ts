@@ -1,10 +1,10 @@
 import type { NextFunction, Request, Response } from "express";
 import { z } from "zod";
-
 import type { ListEvents } from "../../application/usecase/ListEvents.js";
 
 const querySchema = z.object({
-  proximas: z.enum(["true", "false"]).optional()
+  proximas: z.enum(["true", "false"]).optional(),
+  categoriaId: z.string().trim().min(1).optional(),
 });
 
 export class ListEventsController {
@@ -13,13 +13,19 @@ export class ListEventsController {
   execute = async (
     request: Request,
     response: Response,
-    next: NextFunction
+    next: NextFunction,
   ): Promise<void> => {
     try {
-      const { proximas } = querySchema.parse(request.query);
-      const events = await this.listEvents.execute(proximas === "true");
+      const { proximas, categoriaId } = querySchema.parse(request.query);
+      const events = await this.listEvents.execute({
+        proximasOnly: proximas === "true",
+        categoriaId,
+      });
 
-      response.status(200).json({ success: true, data: events });
+      response.status(200).json({
+        success: true,
+        data: events,
+      });
     } catch (error) {
       next(error);
     }

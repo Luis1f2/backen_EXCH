@@ -1,14 +1,11 @@
 import path from "node:path";
-
 import express, {
   type ErrorRequestHandler,
-  type Express
+  type Express,
 } from "express";
-
 import cors from "cors";
 import type { Pool } from "mysql2/promise";
 import { ZodError } from "zod";
-
 import { AppError } from "../user/application/errors/AppError.js";
 import { createUserModule } from "../user/infrastructure/dependences.js";
 import { createLocationModule } from "../location/infrastructure/dependences.js";
@@ -20,6 +17,7 @@ import { createRouteModule } from "../route/infrastructure/dependences.js";
 import { createFavoriteModule } from "../favorite/infrastructure/dependences.js";
 import { createDestinoModule } from "../destino/infrastructure/dependencies.js";
 import { createEventModule } from "../event/infrastructure/dependences.js";
+import { createCategoryModule } from "../category/infrastructure/dependences.js";
 import { createStatModule } from "../stat/infrastructure/dependences.js";
 import { createAdminModule } from "../admin/infrastructure/dependences.js";
 import { createPromotionModule } from "../promotion/infrastructure/dependences.js";
@@ -32,10 +30,11 @@ export function createHttpApp(
   jwtSecret: string,
 ): Express {
   const app = express();
-
   app.disable("x-powered-by");
 
-  const allowedOrigins = (process.env.FRONTEND_ORIGIN ?? "http://localhost:5173")
+  const allowedOrigins = (
+    process.env.FRONTEND_ORIGIN ?? "http://localhost:5173"
+  )
     .split(",")
     .map((origin) => origin.trim())
     .filter(Boolean);
@@ -43,12 +42,15 @@ export function createHttpApp(
   app.use(
     cors({
       origin: allowedOrigins,
-      methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
       allowedHeaders: ["Content-Type", "Authorization"],
-    })
+    }),
   );
 
-  app.use("/v1/api/payments/webhook", express.raw({ type: "application/json" }));
+  app.use(
+    "/v1/api/payments/webhook",
+    express.raw({ type: "application/json" }),
+  );
   app.use(express.json({ limit: "1mb" }));
   app.use(express.urlencoded({ extended: true }));
 
@@ -57,34 +59,43 @@ export function createHttpApp(
 
   app.get("/v1/api/health", async (_request, response) => {
     await verifyDatabaseConnection(databasePool);
-
     response.status(200).json({
       success: true,
       message: "ExploraChiapas API funcionando",
-      database: "connected"
+      database: "connected",
     });
   });
 
-  app.use("/v1/api/users",        createUserModule(databasePool, jwtSecret));
-  app.use("/v1/api/routes",       createRouteModule(databasePool, jwtSecret));
-  app.use("/v1/api/favorites",    createFavoriteModule(databasePool, jwtSecret));
-  app.use("/v1/api/alerts",       createAlertModule(databasePool, jwtSecret));
-  app.use("/v1/api/locations",    createLocationModule(databasePool, jwtSecret));
-  app.use("/v1/api/reviews",      createReviewModule(databasePool, jwtSecret));
-  app.use("/v1/api/destinations", createDestinationModule(databasePool, jwtSecret));
-  app.use("/v1/api/businesses",   createBusinessModule(databasePool, jwtSecret));
-  app.use("/v1/api/destinos",     createDestinoModule(databasePool));
-  app.use("/v1/api/events",       createEventModule(databasePool, jwtSecret));
-  app.use("/v1/api/stats",        createStatModule(databasePool, jwtSecret));
-  app.use("/v1/api/admin",        createAdminModule(databasePool, jwtSecret));
-  app.use("/v1/api/promotions",   createPromotionModule(databasePool, jwtSecret));
-  app.use("/v1/api/uploads",      createUploadModule(databasePool, jwtSecret));
-  app.use("/v1/api/payments",     createPaymentModule(databasePool, jwtSecret));
+  app.use("/v1/api/users", createUserModule(databasePool, jwtSecret));
+  app.use("/v1/api/routes", createRouteModule(databasePool, jwtSecret));
+  app.use("/v1/api/favorites", createFavoriteModule(databasePool, jwtSecret));
+  app.use("/v1/api/alerts", createAlertModule(databasePool, jwtSecret));
+  app.use("/v1/api/locations", createLocationModule(databasePool, jwtSecret));
+  app.use("/v1/api/reviews", createReviewModule(databasePool, jwtSecret));
+  app.use(
+    "/v1/api/destinations",
+    createDestinationModule(databasePool, jwtSecret),
+  );
+  app.use(
+    "/v1/api/businesses",
+    createBusinessModule(databasePool, jwtSecret),
+  );
+  app.use("/v1/api/destinos", createDestinoModule(databasePool));
+  app.use("/v1/api/categories", createCategoryModule(databasePool, jwtSecret));
+  app.use("/v1/api/events", createEventModule(databasePool, jwtSecret));
+  app.use("/v1/api/stats", createStatModule(databasePool, jwtSecret));
+  app.use("/v1/api/admin", createAdminModule(databasePool, jwtSecret));
+  app.use(
+    "/v1/api/promotions",
+    createPromotionModule(databasePool, jwtSecret),
+  );
+  app.use("/v1/api/uploads", createUploadModule(databasePool, jwtSecret));
+  app.use("/v1/api/payments", createPaymentModule(databasePool, jwtSecret));
 
   app.use((_request, response) => {
     response.status(404).json({
       success: false,
-      message: "Ruta no encontrada"
+      message: "Ruta no encontrada",
     });
   });
 
@@ -92,13 +103,13 @@ export function createHttpApp(
     error,
     _request,
     response,
-    _next
+    _next,
   ): void => {
     if (error instanceof ZodError) {
       response.status(400).json({
         success: false,
         message: "Datos inválidos",
-        errors: error.issues
+        errors: error.issues,
       });
       return;
     }
@@ -106,7 +117,7 @@ export function createHttpApp(
     if (error instanceof AppError) {
       response.status(error.statusCode).json({
         success: false,
-        message: error.message
+        message: error.message,
       });
       return;
     }
@@ -119,20 +130,18 @@ export function createHttpApp(
     ) {
       response.status(409).json({
         success: false,
-        message: "El correo ya está registrado"
+        message: "El correo ya está registrado",
       });
       return;
     }
 
     console.error(error);
-
     response.status(500).json({
       success: false,
-      message: "Error interno del servidor"
+      message: "Error interno del servidor",
     });
   };
 
   app.use(errorHandler);
-
   return app;
 }
