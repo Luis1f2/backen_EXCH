@@ -61,8 +61,13 @@ export interface BusinessRepository {
    * Comprueba que el usuario tenga acceso administrativo aprobado.
    * Se utilizará para horarios, servicios, promociones y estadísticas.
    */
-  isUserBusinessAdministrator(
+    isUserBusinessAdministrator(
     userId: string,
     businessId: string
   ): Promise<boolean>;
+
+  incrementViews(
+    businessId: string
+  ): Promise<void>;
+
 }

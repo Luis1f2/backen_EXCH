@@ -5,6 +5,7 @@ export interface Business {
   businessTypeId: string;
   locationId: string;
   priceFrom: number | null;
+  imageUrl: string | null;
   isVerified: boolean;
   active: boolean;
   createdAt: Date;

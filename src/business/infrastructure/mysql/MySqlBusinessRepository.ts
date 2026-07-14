@@ -22,6 +22,7 @@ interface BusinessRow extends RowDataPacket {
   tipo_negocio_id: string;
   ubicacion_id: string;
   precio_desde: string | null;
+  imagen_url: string | null;
   esta_verificado: number;
   activo: number;
   fecha_creacion: Date;
@@ -135,63 +136,96 @@ export class MySqlBusinessRepository implements BusinessRepository {
     return row ? this.mapToDomain(row) : null;
   }
 
-  async list(filters: ListBusinessesFilters): Promise<Business[]> {
-    const conditions: string[] = ["n.activo = 1"];
-    const values: SqlValue[] = [];
+  async list(
+  filters: ListBusinessesFilters
+): Promise<Business[]> {
+  const conditions: string[] = [
+    "n.activo = 1",
+    "n.esta_verificado = 1"
+  ];
 
-    if (filters.businessTypeId) {
-      conditions.push("n.tipo_negocio_id = ?");
-      values.push(filters.businessTypeId);
-    }
+  const values: SqlValue[] = [];
 
-    if (filters.locationId) {
-      conditions.push("n.ubicacion_id = ?");
-      values.push(filters.locationId);
-    }
+  if (filters.businessTypeId) {
+    conditions.push(
+      "n.tipo_negocio_id = ?"
+    );
 
-    if (filters.municipality) {
-      conditions.push("u.municipio = ?");
-      values.push(filters.municipality);
-    }
+    values.push(
+      filters.businessTypeId
+    );
+  }
 
-    if (filters.state) {
-      conditions.push("u.estado = ?");
-      values.push(filters.state);
-    }
+  if (filters.locationId) {
+    conditions.push(
+      "n.ubicacion_id = ?"
+    );
 
-    if (filters.isVerified !== undefined) {
-      conditions.push("n.esta_verificado = ?");
-      values.push(filters.isVerified ? 1 : 0);
-    }
+    values.push(
+      filters.locationId
+    );
+  }
 
-    values.push(filters.limit);
-    values.push(filters.offset);
+  if (filters.municipality) {
+    conditions.push(
+      "u.municipio = ?"
+    );
 
-    const [rows] = await this.databasePool.execute<BusinessRow[]>(
+    values.push(
+      filters.municipality
+    );
+  }
+
+  if (filters.state) {
+    conditions.push(
+      "u.estado = ?"
+    );
+
+    values.push(
+      filters.state
+    );
+  }
+
+  values.push(filters.limit);
+  values.push(filters.offset);
+
+  const [rows] =
+    await this.databasePool.execute<
+      BusinessRow[]
+    >(
       `SELECT
-        n.id,
-        n.nombre,
-        n.descripcion,
-        n.tipo_negocio_id,
-        n.ubicacion_id,
-        n.precio_desde,
-        n.esta_verificado,
-        n.activo,
-        n.fecha_creacion,
-        COALESCE(nm.calificacion_promedio, 0.00) AS calificacion_promedio,
-        COALESCE(nm.total_resenas, 0) AS total_resenas
+         n.id,
+         n.nombre,
+         n.descripcion,
+         n.tipo_negocio_id,
+         n.ubicacion_id,
+         n.precio_desde,
+         n.esta_verificado,
+         n.activo,
+         n.fecha_creacion,
+         COALESCE(
+           nm.calificacion_promedio,
+           0.00
+         ) AS calificacion_promedio,
+         COALESCE(
+           nm.total_resenas,
+           0
+         ) AS total_resenas
        FROM negocio_turistico n
-       INNER JOIN ubicacion u ON u.id = n.ubicacion_id
-       LEFT JOIN negocio_metrica nm ON nm.negocio_id = n.id
+       INNER JOIN ubicacion u
+         ON u.id = n.ubicacion_id
+       LEFT JOIN negocio_metrica nm
+         ON nm.negocio_id = n.id
        WHERE ${conditions.join(" AND ")}
        ORDER BY n.fecha_creacion DESC
-       LIMIT ?
-       OFFSET ?`,
+       LIMIT ? OFFSET ?`,
       values
     );
 
-    return rows.map((row) => this.mapToDomain(row));
-  }
+  return rows.map((row) =>
+    this.mapToDomain(row)
+  );
+}
 
   async listByAdministratorId(userId: string): Promise<Business[]> {
     const [rows] = await this.databasePool.execute<BusinessRow[]>(
@@ -326,26 +360,46 @@ async isUserBusinessOwner(
   return Number(rows[0]?.total ?? 0) > 0;
 }
 
-async isUserBusinessAdministrator(
-  userId: string,
-  businessId: string
-): Promise<boolean> {
-  const [rows] = await this.databasePool.execute<ExistsRow[]>(
-    `SELECT COUNT(*) AS total
-     FROM negocio_administrador na
-     INNER JOIN negocio_turistico n
-       ON n.id = na.negocio_id
-     WHERE na.usuario_id = ?
-       AND na.negocio_id = ?
-       AND na.activo = 1
-       AND na.estado_solicitud = 'aprobada'
-       AND n.activo = 1
-       AND n.esta_verificado = 1`,
-    [userId, businessId]
-  );
+ async isUserBusinessAdministrator(
+    userId: string,
+    businessId: string
+  ): Promise<boolean> {
+    const [rows] =
+      await this.databasePool.execute<ExistsRow[]>(
+        `SELECT COUNT(*) AS total
+         FROM negocio_administrador na
+         INNER JOIN negocio_turistico n
+           ON n.id = na.negocio_id
+         WHERE na.usuario_id = ?
+           AND na.negocio_id = ?
+           AND na.activo = 1
+           AND na.estado_solicitud = 'aprobada'
+           AND n.activo = 1
+           AND n.esta_verificado = 1`,
+        [userId, businessId]
+      );
 
-  return Number(rows[0]?.total ?? 0) > 0;
-}
+    return Number(
+      rows[0]?.total ?? 0
+    ) > 0;
+  }
+
+  async incrementViews(
+    businessId: string
+  ): Promise<void> {
+    await this.databasePool.execute(
+      `INSERT INTO negocio_metrica (
+         negocio_id,
+         total_visualizaciones
+       )
+       VALUES (?, 1)
+       ON DUPLICATE KEY UPDATE
+         total_visualizaciones =
+           total_visualizaciones + 1`,
+      [businessId]
+    );
+  }
+
 
   private mapToDomain(row: BusinessRow): Business {
     return {
@@ -356,6 +410,7 @@ async isUserBusinessAdministrator(
       locationId: row.ubicacion_id,
       priceFrom:
         row.precio_desde === null ? null : Number(row.precio_desde),
+        imageUrl: row.imagen_url,
       isVerified: Boolean(row.esta_verificado),
       active: Boolean(row.activo),
       createdAt: row.fecha_creacion,

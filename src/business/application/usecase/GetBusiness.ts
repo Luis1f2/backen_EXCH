@@ -1,17 +1,42 @@
-import type { Business } from "../../domain/entities/Business.js";
 import type { BusinessRepository } from "../../domain/repositories/BusinessRepository.js";
+
+import type { BusinessScheduleRepository } from "../../domain/repositories/BusinessScheduleRepository.js";
+
 import { AppError } from "../../../user/application/errors/AppError.js";
 
 export class GetBusiness {
-  constructor(private readonly repository: BusinessRepository) {}
+  constructor(
+    private readonly businessRepository:
+      BusinessRepository,
 
-  async execute(id: string): Promise<Business> {
-    const business = await this.repository.findById(id);
+    private readonly scheduleRepository:
+      BusinessScheduleRepository
+  ) {}
 
-    if (!business) {
-      throw new AppError("Negocio no encontrado", 404);
+  async execute(id: string) {
+    const business =
+      await this.businessRepository.findById(id);
+
+    if (
+      !business ||
+      !business.isVerified
+    ) {
+      throw new AppError(
+        "Negocio no encontrado",
+        404
+      );
     }
 
-    return business;
+    const schedules =
+      await this.scheduleRepository
+        .listByBusinessId(id);
+
+    await this.businessRepository
+      .incrementViews(id);
+
+    return {
+      ...business,
+      schedules
+    };
   }
 }
