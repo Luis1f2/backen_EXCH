@@ -1,71 +1,23 @@
 import { Router } from "express";
 
-import type { Pool } from "mysql2/promise";
-import type { TokenService } from "../../../user/application/ports/SecurityPorts.js";
+import type { ListarDestinosController } from "../controller/ListarDestinosController.js";
+import type { ListarDestinosCercanosController } from "../controller/ListarDestinosCercanosController.js";
+import type { ObtenerDestinoController } from "../controller/ObtenerDestinoController.js";
 
-import { createRoleMiddleware } from "../../../http/middlewares/createRoleMiddleware.js";
-
-import type { CreateDestinationController } from "../controller/CreateDestinationController.js";
-import type { GetDestinationController } from "../controller/GetDestinationController.js";
-import type { ListDestinationsController } from "../controller/ListDestinationsController.js";
-import type { UpdateDestinationController } from "../controller/UpdateDestinationController.js";
-import type { DeleteDestinationController } from "../controller/DeleteDestinationController.js";
-
-interface DestinationControllers {
-  create: CreateDestinationController;
-  get: GetDestinationController;
-  list: ListDestinationsController;
-  update: UpdateDestinationController;
-  delete: DeleteDestinationController;
+interface DestinoControllers {
+  listar: ListarDestinosController;
+  listarCercanos: ListarDestinosCercanosController;
+  obtener: ObtenerDestinoController;
 }
 
-export function createDestinationRoutes(
-  controllers: DestinationControllers,
-  pool: Pool,
-  tokenService: TokenService,
-): Router {
+export function createDestinoRoutes(controllers: DestinoControllers): Router {
   const router = Router();
 
-  const platformAdminOnly = createRoleMiddleware(
-    pool,
-    tokenService,
-    ["admin_plataforma"],
-  );
-
-  // Consultas públicas.
-  router.get(
-    "/",
-    controllers.list.execute,
-  );
-
-  router.get(
-    "/:id",
-    controllers.get.execute,
-  );
-
-  // Solo el administrador de la plataforma
-  // puede registrar destinos.
-  router.post(
-    "/",
-    platformAdminOnly,
-    controllers.create.execute,
-  );
-
-  // Solo el administrador de la plataforma
-  // puede editar destinos.
-  router.patch(
-    "/:id",
-    platformAdminOnly,
-    controllers.update.execute,
-  );
-
-  // Solo el administrador de la plataforma
-  // puede eliminar destinos.
-  router.delete(
-    "/:id",
-    platformAdminOnly,
-    controllers.delete.execute,
-  );
+  // /cercanos debe registrarse antes de /:id, si no Express interpreta
+  // "cercanos" como el valor del parametro id.
+  router.get("/cercanos", controllers.listarCercanos.execute);
+  router.get("/:id", controllers.obtener.execute);
+  router.get("/", controllers.listar.execute);
 
   return router;
 }
