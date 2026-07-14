@@ -1,8 +1,9 @@
 import { Router } from "express";
 
+import type { Pool } from "mysql2/promise";
 import type { TokenService } from "../../../user/application/ports/SecurityPorts.js";
 
-import { createAuthenticateMiddleware } from "../../../http/middlewares/createAuthenticateMiddleware.js";
+import { createRoleMiddleware } from "../../../http/middlewares/createRoleMiddleware.js";
 
 import type { CreateDestinationController } from "../controller/CreateDestinationController.js";
 import type { GetDestinationController } from "../controller/GetDestinationController.js";
@@ -20,17 +21,51 @@ interface DestinationControllers {
 
 export function createDestinationRoutes(
   controllers: DestinationControllers,
-  tokenService: TokenService
+  pool: Pool,
+  tokenService: TokenService,
 ): Router {
   const router = Router();
-  const authenticate = createAuthenticateMiddleware(tokenService);
 
-  router.get("/", controllers.list.execute);
-  router.get("/:id", controllers.get.execute);
+  const platformAdminOnly = createRoleMiddleware(
+    pool,
+    tokenService,
+    ["admin_plataforma"],
+  );
 
-  router.post("/", authenticate, controllers.create.execute);
-  router.patch("/:id", authenticate, controllers.update.execute);
-  router.delete("/:id", authenticate, controllers.delete.execute);
+  // Consultas públicas.
+  router.get(
+    "/",
+    controllers.list.execute,
+  );
+
+  router.get(
+    "/:id",
+    controllers.get.execute,
+  );
+
+  // Solo el administrador de la plataforma
+  // puede registrar destinos.
+  router.post(
+    "/",
+    platformAdminOnly,
+    controllers.create.execute,
+  );
+
+  // Solo el administrador de la plataforma
+  // puede editar destinos.
+  router.patch(
+    "/:id",
+    platformAdminOnly,
+    controllers.update.execute,
+  );
+
+  // Solo el administrador de la plataforma
+  // puede eliminar destinos.
+  router.delete(
+    "/:id",
+    platformAdminOnly,
+    controllers.delete.execute,
+  );
 
   return router;
 }
