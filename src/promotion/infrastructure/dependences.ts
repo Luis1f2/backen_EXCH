@@ -27,5 +27,5 @@ export function createPromotionModule(pool: Pool, jwtSecret: string) {
     delete: new DeletePromotionController(new DeletePromotion(repository))
   };
 
-  return createPromotionRoutes(controllers, tokenService);
+  return createPromotionRoutes(controllers, tokenService, pool);
 }
