@@ -1,4 +1,4 @@
-import type { BusinessService } from "../entities/BusinessServices";
+import type { BusinessService } from "../entities/BusinessServices.js";
 
 export interface CreateBusinessServiceData {
   id: string;

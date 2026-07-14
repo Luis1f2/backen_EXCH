@@ -2,8 +2,8 @@ import type { BusinessRepository } from "../../domain/repositories/BusinessRepos
 
 import type {
   BusinessServiceRepository,
-  UpdateBusinessServiceData
-} from "../../domain/repositories/BusinessServiceRepository.js";
+  UpdateBusinessServiceData,
+} from "../../domain/repositories/BusinessServicesRepositories.js";
 
 import { AppError } from "../../../user/application/errors/AppError.js";
 

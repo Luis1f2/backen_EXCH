@@ -20,6 +20,7 @@ import { DeleteBusinessService } from "../application/usecase/DeleteBusinessServ
 import { MySqlBusinessRepository } from "./mysql/MySqlBusinessRepository.js";
 import { MySqlBusinessScheduleRepository } from "./mysql/MySqlBusinessScheduleRepository.js";
 import { MySqlBusinessServiceRepository } from "./mysql/MySqlBusinessServiceRepository.js";
+import { ListBusinessRequests } from "../application/usecase/ListBusinessRequests.js";
 
 import { CreateBusinessController } from "./controller/CreateBusinessController.js";
 import { GetBusinessController } from "./controller/GetBusinessController.js";
@@ -30,6 +31,7 @@ import { DeleteBusinessController } from "./controller/DeleteBusinessController.
 import { ValidateBusinessController } from "./controller/ValidateBusinessController.js";
 import { GetBusinessSchedulesController } from "./controller/GetBusinessSchedulesController.js";
 import { ReplaceBusinessSchedulesController } from "./controller/ReplaceBusinessSchedulesController.js";
+import { ListBusinessRequestsController } from "./controller/ListBusinessRequestsController.js";
 
 import { ListBusinessServicesController } from "./controller/ListBusinessServicesController.js";
 import { CreateBusinessServiceController } from "./controller/CreateBusinessServiceController.js";
@@ -81,9 +83,15 @@ export function createBusinessModule(
       new DeleteBusiness(repository)
     ),
 
-    validate: new ValidateBusinessController(
-      new ValidateBusiness(pool)
-    ),
+    validate:
+  new ValidateBusinessController(
+    new ValidateBusiness(pool),
+  ),
+
+listRequests:
+  new ListBusinessRequestsController(
+    new ListBusinessRequests(pool),
+  ),
 
     getSchedules:
       new GetBusinessSchedulesController(
