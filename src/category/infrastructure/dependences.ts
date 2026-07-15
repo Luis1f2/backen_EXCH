@@ -4,8 +4,10 @@ import { ListCategories } from "../application/usecase/ListCategories.js";
 import { GetCategory } from "../application/usecase/GetCategory.js";
 import { CreateCategory } from "../application/usecase/CreateCategory.js";
 import { UpdateCategory } from "../application/usecase/UpdateCategory.js";
+import { DeleteCategory } from "../application/usecase/DeleteCategory.js";
 import { MySqlCategoryRepository } from "./mysql/MySqlCategoryRepository.js";
 import { ListCategoriesController } from "./controller/ListCategoriesController.js";
+import { DeleteCategoryController } from "./controller/DeleteCategoryController.js";
 import { GetCategoryController } from "./controller/GetCategoryController.js";
 import { CreateCategoryController } from "./controller/CreateCategoryController.js";
 import { UpdateCategoryController } from "./controller/UpdateCategoryController.js";
@@ -20,6 +22,7 @@ export function createCategoryModule(pool: Pool, jwtSecret: string) {
     get: new GetCategoryController(new GetCategory(repository)),
     create: new CreateCategoryController(new CreateCategory(repository)),
     update: new UpdateCategoryController(new UpdateCategory(repository)),
+    delete: new DeleteCategoryController(new DeleteCategory(repository)),
   };
 
   return createCategoryRoutes(controllers, pool, tokenService);

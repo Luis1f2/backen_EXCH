@@ -1,5 +1,11 @@
-import type { Pool,ResultSetHeader ,RowDataPacket } from "mysql2/promise";
+import type {
+  Pool,
+  ResultSetHeader,
+  RowDataPacket,
+} from "mysql2/promise";
+
 import type { Category } from "../../domain/entities/Category.js";
+
 import type {
   CategoryRepository,
   CategoryScope,
@@ -7,7 +13,13 @@ import type {
   UpdateCategoryData,
 } from "../../domain/repositories/CategoryRepository.js";
 
-type SqlValue = string | number | boolean | Date | Buffer | null;
+type SqlValue =
+  | string
+  | number
+  | boolean
+  | Date
+  | Buffer
+  | null;
 
 interface CategoryRow extends RowDataPacket {
   id: string;
@@ -16,6 +28,10 @@ interface CategoryRow extends RowDataPacket {
   aplica_eventos: number;
   aplica_destinos: number;
   total_eventos_activos: number | string;
+}
+
+interface CategoryUsageRow extends RowDataPacket {
+  total: number | string;
 }
 
 const SELECT_CATEGORY = `
@@ -32,16 +48,26 @@ const SELECT_CATEGORY = `
    AND e.activo = 1
 `;
 
-export class MySqlCategoryRepository implements CategoryRepository {
-  constructor(private readonly pool: Pool) {}
+export class MySqlCategoryRepository
+  implements CategoryRepository
+{
+  constructor(
+    private readonly pool: Pool,
+  ) {}
 
-  async list(scope: CategoryScope = "eventos"): Promise<Category[]> {
+  async list(
+    scope: CategoryScope = "eventos",
+  ): Promise<Category[]> {
     let query = SELECT_CATEGORY;
 
     if (scope === "eventos") {
-      query += " WHERE c.aplica_eventos = 1";
+      query += `
+        WHERE c.aplica_eventos = 1
+      `;
     } else if (scope === "destinos") {
-      query += " WHERE c.aplica_destinos = 1";
+      query += `
+        WHERE c.aplica_destinos = 1
+      `;
     }
 
     query += `
@@ -54,12 +80,21 @@ export class MySqlCategoryRepository implements CategoryRepository {
       ORDER BY c.nombre ASC
     `;
 
-    const [rows] = await this.pool.execute<CategoryRow[]>(query);
-    return rows.map((row) => this.mapToDomain(row));
+    const [rows] =
+      await this.pool.execute<CategoryRow[]>(
+        query,
+      );
+
+    return rows.map((row) =>
+      this.mapToDomain(row),
+    );
   }
 
-  async findById(id: string): Promise<Category | null> {
-    const query = `${SELECT_CATEGORY}
+  async findById(
+    id: string,
+  ): Promise<Category | null> {
+    const query = `
+      ${SELECT_CATEGORY}
       WHERE c.id = ?
       GROUP BY
         c.id,
@@ -70,13 +105,26 @@ export class MySqlCategoryRepository implements CategoryRepository {
       LIMIT 1
     `;
 
-    const [rows] = await this.pool.execute<CategoryRow[]>(query, [id]);
-    return rows[0] ? this.mapToDomain(rows[0]) : null;
+    const [rows] =
+      await this.pool.execute<CategoryRow[]>(
+        query,
+        [id],
+      );
+
+    const row = rows[0];
+
+    return row
+      ? this.mapToDomain(row)
+      : null;
   }
 
-  async findByName(nombre: string): Promise<Category | null> {
-    const query = `${SELECT_CATEGORY}
-      WHERE LOWER(TRIM(c.nombre)) = LOWER(TRIM(?))
+  async findByName(
+    nombre: string,
+  ): Promise<Category | null> {
+    const query = `
+      ${SELECT_CATEGORY}
+      WHERE LOWER(TRIM(c.nombre))
+        = LOWER(TRIM(?))
       GROUP BY
         c.id,
         c.nombre,
@@ -86,27 +134,47 @@ export class MySqlCategoryRepository implements CategoryRepository {
       LIMIT 1
     `;
 
-    const [rows] = await this.pool.execute<CategoryRow[]>(query, [nombre]);
-    return rows[0] ? this.mapToDomain(rows[0]) : null;
+    const [rows] =
+      await this.pool.execute<CategoryRow[]>(
+        query,
+        [nombre],
+      );
+
+    const row = rows[0];
+
+    return row
+      ? this.mapToDomain(row)
+      : null;
   }
 
-  async create(data: CreateCategoryData): Promise<Category> {
+  async create(
+    data: CreateCategoryData,
+  ): Promise<Category> {
     await this.pool.execute(
-      `INSERT INTO categoria
-        (id, nombre, icono, aplica_eventos, aplica_destinos)
+      `INSERT INTO categoria (
+         id,
+         nombre,
+         icono,
+         aplica_eventos,
+         aplica_destinos
+       )
        VALUES (?, ?, ?, ?, ?)`,
       [
         data.id,
         data.nombre,
         data.icono ?? null,
-        data.aplicaAEventos,
-        data.aplicaADestinos,
+        data.aplicaAEventos ? 1 : 0,
+        data.aplicaADestinos ? 1 : 0,
       ],
     );
 
-    const created = await this.findById(data.id);
+    const created =
+      await this.findById(data.id);
+
     if (!created) {
-      throw new Error("No se pudo recuperar la categoría creada");
+      throw new Error(
+        "No se pudo recuperar la categoría creada",
+      );
     }
 
     return created;
@@ -129,14 +197,22 @@ export class MySqlCategoryRepository implements CategoryRepository {
       values.push(data.icono);
     }
 
-    if (data.aplicaAEventos !== undefined) {
+    if (
+      data.aplicaAEventos !== undefined
+    ) {
       fields.push("aplica_eventos = ?");
-      values.push(data.aplicaAEventos);
+      values.push(
+        data.aplicaAEventos ? 1 : 0,
+      );
     }
 
-    if (data.aplicaADestinos !== undefined) {
+    if (
+      data.aplicaADestinos !== undefined
+    ) {
       fields.push("aplica_destinos = ?");
-      values.push(data.aplicaADestinos);
+      values.push(
+        data.aplicaADestinos ? 1 : 0,
+      );
     }
 
     if (fields.length === 0) {
@@ -145,22 +221,69 @@ export class MySqlCategoryRepository implements CategoryRepository {
 
     values.push(id);
 
-    await this.pool.execute(
-      `UPDATE categoria SET ${fields.join(", ")} WHERE id = ?`,
+    await this.pool.execute<ResultSetHeader>(
+      `UPDATE categoria
+       SET ${fields.join(", ")}
+       WHERE id = ?`,
       values,
     );
 
     return this.findById(id);
   }
 
-  private mapToDomain(row: CategoryRow): Category {
+  async isInUse(
+    id: string,
+  ): Promise<boolean> {
+    const [rows] =
+      await this.pool.execute<CategoryUsageRow[]>(
+        `SELECT
+           (
+             SELECT COUNT(*)
+             FROM evento
+             WHERE categoria_id = ?
+           )
+           +
+           (
+             SELECT COUNT(*)
+             FROM destino
+             WHERE categoria_id = ?
+           ) AS total`,
+        [id, id],
+      );
+
+    return Number(
+      rows[0]?.total ?? 0,
+    ) > 0;
+  }
+
+  async delete(
+    id: string,
+  ): Promise<boolean> {
+    const [result] =
+      await this.pool.execute<ResultSetHeader>(
+        `DELETE FROM categoria
+         WHERE id = ?`,
+        [id],
+      );
+
+    return result.affectedRows > 0;
+  }
+
+  private mapToDomain(
+    row: CategoryRow,
+  ): Category {
     return {
       id: row.id,
       nombre: row.nombre,
       icono: row.icono,
-      aplicaAEventos: Boolean(row.aplica_eventos),
-      aplicaADestinos: Boolean(row.aplica_destinos),
-      totalEventosActivos: Number(row.total_eventos_activos),
+      aplicaAEventos:
+        Boolean(row.aplica_eventos),
+      aplicaADestinos:
+        Boolean(row.aplica_destinos),
+      totalEventosActivos:
+        Number(
+          row.total_eventos_activos,
+        ),
     };
   }
 }
