@@ -1,4 +1,4 @@
-import type { Pool, RowDataPacket } from "mysql2/promise";
+import type { Pool,ResultSetHeader ,RowDataPacket } from "mysql2/promise";
 import type { Category } from "../../domain/entities/Category.js";
 import type {
   CategoryRepository,
