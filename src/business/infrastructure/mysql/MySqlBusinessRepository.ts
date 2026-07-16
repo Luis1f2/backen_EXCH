@@ -148,79 +148,67 @@ export class MySqlBusinessRepository implements BusinessRepository {
   const values: SqlValue[] = [];
 
   if (filters.businessTypeId) {
-    conditions.push(
-      "n.tipo_negocio_id = ?"
-    );
-
-    values.push(
-      filters.businessTypeId
-    );
+    conditions.push("n.tipo_negocio_id = ?");
+    values.push(filters.businessTypeId);
   }
 
   if (filters.locationId) {
-    conditions.push(
-      "n.ubicacion_id = ?"
-    );
-
-    values.push(
-      filters.locationId
-    );
+    conditions.push("n.ubicacion_id = ?");
+    values.push(filters.locationId);
   }
 
   if (filters.municipality) {
-    conditions.push(
-      "u.municipio = ?"
-    );
-
-    values.push(
-      filters.municipality
-    );
+    conditions.push("u.municipio = ?");
+    values.push(filters.municipality);
   }
 
   if (filters.state) {
-    conditions.push(
-      "u.estado = ?"
-    );
-
-    values.push(
-      filters.state
-    );
+    conditions.push("u.estado = ?");
+    values.push(filters.state);
   }
 
-  values.push(filters.limit);
-  values.push(filters.offset);
+  /*
+   * limit y offset ya fueron validados por Zod:
+   * limit: entero entre 1 y 100
+   * offset: entero mayor o igual que 0
+   */
+  const limit = Number(filters.limit);
+  const offset = Number(filters.offset);
+
+  const query = `
+    SELECT
+      n.id,
+      n.nombre,
+      n.descripcion,
+      n.tipo_negocio_id,
+      n.ubicacion_id,
+      n.precio_desde,
+      n.imagen_url,
+      n.esta_verificado,
+      n.activo,
+      n.fecha_creacion,
+      COALESCE(
+        nm.calificacion_promedio,
+        0.00
+      ) AS calificacion_promedio,
+      COALESCE(
+        nm.total_resenas,
+        0
+      ) AS total_resenas
+    FROM negocio_turistico n
+    INNER JOIN ubicacion u
+      ON u.id = n.ubicacion_id
+    LEFT JOIN negocio_metrica nm
+      ON nm.negocio_id = n.id
+    WHERE ${conditions.join(" AND ")}
+    ORDER BY n.fecha_creacion DESC
+    LIMIT ${limit}
+    OFFSET ${offset}
+  `;
 
   const [rows] =
-    await this.databasePool.execute<
-      BusinessRow[]
-    >(
-      `SELECT
-         n.id,
-         n.nombre,
-         n.descripcion,
-         n.tipo_negocio_id,
-         n.ubicacion_id,
-         n.precio_desde,
-         n.imagen_url,
-         n.esta_verificado,
-         n.activo,
-         n.fecha_creacion,
-         COALESCE(
-           nm.calificacion_promedio,
-           0.00
-         ) AS calificacion_promedio,
-         COALESCE(
-           nm.total_resenas,
-           0
-         ) AS total_resenas
-       FROM negocio_turistico n
-       INNER JOIN ubicacion u
-         ON u.id = n.ubicacion_id
-       LEFT JOIN negocio_metrica nm
-         ON nm.negocio_id = n.id
-       WHERE ${conditions.join(" AND ")}
-       ORDER BY n.fecha_creacion DESC
-       LIMIT ? OFFSET ?`,
+    await this.databasePool.execute<BusinessRow[]>(
+      query,
       values
     );
 
