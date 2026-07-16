@@ -5,4 +5,5 @@ export interface Category {
   aplicaAEventos: boolean;
   aplicaADestinos: boolean;
   totalEventosActivos: number;
+  totalDestinosActivos: number;
 }
