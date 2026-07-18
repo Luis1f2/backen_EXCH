@@ -13,36 +13,27 @@ import {
 
 interface BusinessImageRow
   extends RowDataPacket {
-  id: string;
   imagen_url: string | null;
 }
 
-export interface UploadBusinessImageResult {
-  negocioId: string;
-  imagenUrl: string;
-}
-
-export class UploadBusinessImage {
+export class DeleteBusinessImage {
   constructor(
     private readonly pool: Pool
   ) {}
 
   async execute(
     negocioId: string,
-    userId: string,
-    filename: string
-  ): Promise<UploadBusinessImageResult> {
+    userId: string
+  ): Promise<void> {
     const [rows] =
       await this.pool.execute<
         BusinessImageRow[]
       >(
-        `SELECT
-           na.id,
-           n.imagen_url
-         FROM negocio_administrador na
-         INNER JOIN negocio_turistico n
-           ON n.id = na.negocio_id
-         WHERE na.negocio_id = ?
+        `SELECT n.imagen_url
+         FROM negocio_turistico n
+         INNER JOIN negocio_administrador na
+           ON na.negocio_id = n.id
+         WHERE n.id = ?
            AND na.usuario_id = ?
            AND na.activo = 1
            AND na.estado_solicitud = 'aprobada'
@@ -64,22 +55,16 @@ export class UploadBusinessImage {
       );
     }
 
-    const imagenUrl =
-      `/uploads/negocios/${filename}`;
-
     const [result] =
       await this.pool.execute<
         ResultSetHeader
       >(
         `UPDATE negocio_turistico
-         SET imagen_url = ?
+         SET imagen_url = NULL
          WHERE id = ?
            AND activo = 1
            AND esta_verificado = 1`,
-        [
-          imagenUrl,
-          negocioId
-        ]
+        [negocioId]
       );
 
     if (result.affectedRows === 0) {
@@ -89,19 +74,9 @@ export class UploadBusinessImage {
       );
     }
 
-    /*
-     * Si el negocio ya tenía otra imagen,
-     * eliminamos el archivo anterior después
-     * de actualizar correctamente la BD.
-     */
     await removePreviousUpload(
       business.imagen_url,
       "negocios"
     );
-
-    return {
-      negocioId,
-      imagenUrl
-    };
   }
 }

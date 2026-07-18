@@ -102,6 +102,7 @@ app.use(
     "/v1/api/promotions",
     createPromotionModule(databasePool, jwtSecret),
   );
+  
   app.use("/v1/api/uploads", createUploadModule(databasePool, jwtSecret));
 
   const stripeSecretKey = process.env.STRIPE_SECRET_KEY?.trim();

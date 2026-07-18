@@ -36,12 +36,31 @@ import type {
 } from "../controller/UploadPromotionImageController.js";
 
 import type {
+  DeletePromotionImageController
+} from "../controller/DeletePromotionImageController.js";
+
+import type {
   UploadEventImageController
 } from "../controller/UploadEventImageController.js";
 
 import type {
+  DeleteEventImageController
+} from "../controller/DeleteEventImageController.js";
+
+import type {
   UploadUserProfileImageController
 } from "../controller/UploadUserProfileImageController.js";
+
+import type {
+  DeleteBusinessImageController
+} from "../controller/DeleteBusinessImageController.js";
+
+
+//Elimina imagen perfil
+
+import type {
+  DeleteUserProfileImageController
+} from "../controller/DeleteUserProfileImageController.js";
 
 interface UploadControllers {
   business:
@@ -53,11 +72,25 @@ interface UploadControllers {
   promotion:
     UploadPromotionImageController;
 
+  
+  deletePromotion:
+    DeletePromotionImageController;
+
+
   event:
     UploadEventImageController;
 
+  deleteEvent:
+    DeleteEventImageController;
+
   userProfile:
     UploadUserProfileImageController;
+
+  deleteUserProfile:
+  DeleteUserProfileImageController;
+
+  deleteBusiness:
+  DeleteBusinessImageController;
 }
 
 export function createUploadRoutes(
@@ -85,6 +118,12 @@ export function createUploadRoutes(
     controllers.business.execute
   );
 
+  router.delete(
+    "/negocios/:negocioId",
+    authenticate,
+    controllers.deleteBusiness.execute
+  );
+
   router.post(
     "/resenas/:resenaId",
     authenticate,
@@ -99,6 +138,12 @@ export function createUploadRoutes(
     controllers.promotion.execute
   );
 
+  router.delete(
+    "/promociones/:promocionId",
+    authenticate,
+    controllers.deletePromotion.execute
+  );
+
   router.post(
     "/eventos/:eventoId",
     platformAdminOnly,
@@ -106,12 +151,17 @@ export function createUploadRoutes(
     controllers.event.execute
   );
 
-  router.post(
-    "/usuarios/perfil",
-    authenticate,
-    uploadUsuario.single("imagen"),
-    controllers.userProfile.execute
+  router.delete(
+    "/eventos/:eventoId",
+    platformAdminOnly,
+    controllers.deleteEvent.execute
   );
+
+router.delete(
+  "/usuarios/perfil",
+  authenticate,
+  controllers.deleteUserProfile.execute
+);
 
   return router;
 }
