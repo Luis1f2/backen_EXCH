@@ -3,6 +3,8 @@ import express, {
   type ErrorRequestHandler,
   type Express,
 } from "express";
+import fs from "node:fs";
+import multer from "multer";
 import cors from "cors";
 import type { Pool } from "mysql2/promise";
 import { ZodError } from "zod";
@@ -54,8 +56,19 @@ export function createHttpApp(
   app.use(express.json({ limit: "1mb" }));
   app.use(express.urlencoded({ extended: true }));
 
-  const uploadsDir = path.resolve(__dirname, "../../uploads");
-  app.use("/uploads", express.static(uploadsDir));
+const uploadsDir = path.resolve(
+  process.cwd(),
+  "uploads"
+);
+
+fs.mkdirSync(uploadsDir, {
+  recursive: true,
+});
+
+app.use(
+  "/uploads",
+  express.static(uploadsDir)
+);
 
   app.get("/v1/api/health", async (_request, response) => {
     await verifyDatabaseConnection(databasePool);
@@ -117,6 +130,32 @@ if (stripeSecretKey) {
     response,
     _next,
   ): void => {
+
+    if (error instanceof multer.MulterError) {
+  let message =
+    "No se pudo procesar la imagen";
+
+  if (error.code === "LIMIT_FILE_SIZE") {
+    message =
+      "La imagen supera el límite de 5 MB";
+  }
+
+  if (
+    error.code ===
+    "LIMIT_UNEXPECTED_FILE"
+  ) {
+    message =
+      "El campo del archivo debe llamarse imagen";
+  }
+
+  response.status(400).json({
+    success: false,
+    message,
+  });
+
+  return;
+}
+
     if (error instanceof ZodError) {
       response.status(400).json({
         success: false,

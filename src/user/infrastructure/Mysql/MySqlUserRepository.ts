@@ -24,6 +24,7 @@ interface UserRow extends RowDataPacket {
   tipo_usuario_id: string;
   tipo_usuario_nombre: UserType;
   telefono: string | null;
+  imagen_perfil_url: string | null;
   fecha_registro: Date;
   es_premium: number;
   activo: number;
@@ -188,12 +189,17 @@ private async findOne(
 
   return row ? this.mapToDomain(row) : null;
 }
-private mapToDomain(row: UserRow): User {
+
+private mapToDomain(
+  row: UserRow
+): User {
   return {
     id: row.id,
     name: row.nombre,
     email: row.email,
     phone: row.telefono,
+    imageProfileUrl:
+      row.imagen_perfil_url,
     passwordHash: row.password_hash,
     userTypeId: row.tipo_usuario_id,
     userType: row.tipo_usuario_nombre,

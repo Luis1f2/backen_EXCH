@@ -13,10 +13,13 @@ import type {
 
 type SqlValue = string | number | boolean | Date | Buffer | null;
 
+/*Le agregue nadamas imagen_url para que guarde la rura de las imagenes */
+
 interface EventRow extends RowDataPacket {
   id: string;
   titulo: string;
   descripcion: string | null;
+  imagen_url: string | null;
   fecha_inicio: Date;
   fecha_fin: Date | null;
   ubicacion_id: string | null;
@@ -32,6 +35,7 @@ const SELECT_EVENTO = `
     e.id,
     e.titulo,
     e.descripcion,
+    e.imagen_url,
     e.fecha_inicio,
     e.fecha_fin,
     e.ubicacion_id,
@@ -41,8 +45,10 @@ const SELECT_EVENTO = `
     c.nombre AS categoria_nombre,
     u.municipio
   FROM evento e
-  LEFT JOIN categoria c ON c.id = e.categoria_id
-  LEFT JOIN ubicacion u ON u.id = e.ubicacion_id
+  LEFT JOIN categoria c
+    ON c.id = e.categoria_id
+  LEFT JOIN ubicacion u
+    ON u.id = e.ubicacion_id
   WHERE e.activo = 1
 `;
 
@@ -90,12 +96,13 @@ export class MySqlEventRepository implements EventRepository {
   async create(data: CreateEventData): Promise<Event> {
     await this.pool.execute(
       `INSERT INTO evento
-        (id, titulo, descripcion, fecha_inicio, fecha_fin, ubicacion_id, categoria_id, creado_por)
+        (id, titulo, descripcion, imagen_url, fecha_inicio, fecha_fin, ubicacion_id, categoria_id, creado_por)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         data.id,
         data.titulo,
         data.descripcion ?? null,
+        data.imagenUrl ?? null,
         data.fechaInicio,
         data.fechaFin ?? null,
         data.ubicacionId ?? null,
@@ -124,6 +131,11 @@ export class MySqlEventRepository implements EventRepository {
     if (data.descripcion !== undefined) {
       fields.push("descripcion = ?");
       values.push(data.descripcion);
+    }
+
+    if (data.imagenUrl !== undefined) {
+      fields.push("imagen_url = ?");
+      values.push(data.imagenUrl);
     }
 
     if (data.fechaInicio !== undefined) {
@@ -169,19 +181,22 @@ export class MySqlEventRepository implements EventRepository {
     return result.affectedRows > 0;
   }
 
-  private mapToDomain(row: EventRow): Event {
-    return {
-      id: row.id,
-      titulo: row.titulo,
-      descripcion: row.descripcion,
-      fechaInicio: row.fecha_inicio,
-      fechaFin: row.fecha_fin,
-      ubicacionId: row.ubicacion_id,
-      categoriaId: row.categoria_id,
-      categoriaNombre: row.categoria_nombre,
-      municipio: row.municipio,
-      activo: Boolean(row.activo),
-      fechaCreacion: row.fecha_creacion,
-    };
-  }
+private mapToDomain(
+  row: EventRow
+): Event {
+  return {
+    id: row.id,
+    titulo: row.titulo,
+    descripcion: row.descripcion,
+    imagenUrl: row.imagen_url,
+    fechaInicio: row.fecha_inicio,
+    fechaFin: row.fecha_fin,
+    ubicacionId: row.ubicacion_id,
+    categoriaId: row.categoria_id,
+    categoriaNombre: row.categoria_nombre,
+    municipio: row.municipio,
+    activo: Boolean(row.activo),
+    fechaCreacion: row.fecha_creacion
+  };
+}
 }

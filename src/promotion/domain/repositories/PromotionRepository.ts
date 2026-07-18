@@ -20,12 +20,36 @@ export interface UpdatePromotionData {
 }
 
 export interface PromotionRepository {
-  listByBusiness(negocioId: string): Promise<Promotion[]>;
+  listByBusiness(
+    negocioId: string
+  ): Promise<Promotion[]>;
+
   listActive(): Promise<Promotion[]>;
-  findById(id: string): Promise<Promotion | null>;
-  create(data: CreatePromotionData): Promise<Promotion>;
-  update(id: string, data: UpdatePromotionData): Promise<Promotion | null>;
-  delete(id: string): Promise<boolean>;
-  isOwner(promotionId: string, userId: string): Promise<boolean>;
-  isBusinessOwner(negocioId: string, userId: string): Promise<boolean>;
+
+  findById(
+    id: string
+  ): Promise<Promotion | null>;
+
+  create(
+    data: CreatePromotionData
+  ): Promise<Promotion>;
+
+  update(
+    id: string,
+    data: UpdatePromotionData
+  ): Promise<Promotion | null>;
+
+  delete(
+    id: string
+  ): Promise<boolean>;
+
+  isOwner(
+    promotionId: string,
+    userId: string
+  ): Promise<boolean>;
+
+  isBusinessOwner(
+    negocioId: string,
+    userId: string
+  ): Promise<boolean>;
 }

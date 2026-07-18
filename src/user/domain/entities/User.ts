@@ -10,6 +10,7 @@ export interface User {
   name: string;
   email: string;
   phone: string | null;
+  imageProfileUrl: string | null;
   passwordHash: string;
   userTypeId: string;
   userType: UserType;
@@ -18,9 +19,16 @@ export interface User {
   active: boolean;
 }
 
-export type PublicUser = Omit<User, "passwordHash">;
+export type PublicUser =
+  Omit<User, "passwordHash">;
 
-export function toPublicUser(user: User): PublicUser {
-  const { passwordHash: _passwordHash, ...publicUser } = user;
+export function toPublicUser(
+  user: User
+): PublicUser {
+  const {
+    passwordHash: _passwordHash,
+    ...publicUser
+  } = user;
+
   return publicUser;
 }

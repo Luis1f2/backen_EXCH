@@ -1,44 +1,115 @@
 import { randomUUID } from "node:crypto";
+import fs from "node:fs";
 import path from "node:path";
 import multer from "multer";
 
-import { AppError } from "../../user/application/errors/AppError.js";
+import { AppError } from
+  "../../user/application/errors/AppError.js";
 
-const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
-const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
+type UploadFolder =
+  | "negocios"
+  | "resenas"
+  | "promociones"
+  | "eventos"
+  | "usuarios";
 
-function buildStorage(subfolder: "negocios" | "resenas") {
+const MAX_SIZE_BYTES =
+  5 * 1024 * 1024;
+
+const EXTENSION_BY_MIME:
+  Record<string, string> = {
+    "image/jpeg": ".jpg",
+    "image/jpg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+  };
+
+function buildStorage(
+  subfolder: UploadFolder
+) {
+  const destinationPath = path.resolve(
+    process.cwd(),
+    "uploads",
+    subfolder
+  );
+
+  /*
+   * Evita ENOENT cuando la carpeta
+   * todavía no existe.
+   */
+  fs.mkdirSync(destinationPath, {
+    recursive: true,
+  });
+
   return multer.diskStorage({
-    destination: (_req, _file, cb) => {
-      cb(null, `uploads/${subfolder}`);
+    destination: (
+      _request,
+      _file,
+      callback
+    ) => {
+      callback(null, destinationPath);
     },
-    filename: (_req, file, cb) => {
-      const ext = path.extname(file.originalname).toLowerCase() || ".jpg";
-      cb(null, `${randomUUID()}${ext}`);
-    }
+
+    filename: (
+      _request,
+      file,
+      callback
+    ) => {
+      const extension =
+        EXTENSION_BY_MIME[file.mimetype];
+
+      callback(
+        null,
+        `${randomUUID()}${extension}`
+      );
+    },
   });
 }
 
 function fileFilter(
-  _req: Express.Request,
+  _request: Express.Request,
   file: Express.Multer.File,
-  cb: multer.FileFilterCallback
+  callback: multer.FileFilterCallback
 ): void {
-  if (ALLOWED_TYPES.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(new AppError("Solo se permiten imagenes JPG, PNG o WEBP", 400));
+  if (EXTENSION_BY_MIME[file.mimetype]) {
+    callback(null, true);
+    return;
   }
+
+  callback(
+    new AppError(
+      "Solo se permiten imágenes JPG, PNG o WEBP",
+      400
+    )
+  );
 }
 
-export const uploadNegocio = multer({
-  storage: buildStorage("negocios"),
-  fileFilter,
-  limits: { fileSize: MAX_SIZE_BYTES }
-});
+function createImageUploader(
+  folder: UploadFolder
+) {
+  return multer({
+    storage: buildStorage(folder),
 
-export const uploadResena = multer({
-  storage: buildStorage("resenas"),
-  fileFilter,
-  limits: { fileSize: MAX_SIZE_BYTES }
-});
+    fileFilter,
+
+    limits: {
+      fileSize: MAX_SIZE_BYTES,
+      files: 1,
+    },
+  });
+}
+
+export const uploadNegocio =
+  createImageUploader("negocios");
+
+export const uploadResena =
+  createImageUploader("resenas");
+
+export const uploadPromocion =
+  createImageUploader("promociones");
+
+export const uploadEvento =
+  createImageUploader("eventos");
+
+export const uploadUsuario =
+  createImageUploader("usuarios");

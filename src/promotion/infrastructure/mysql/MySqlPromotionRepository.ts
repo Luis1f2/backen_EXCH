@@ -24,6 +24,7 @@ interface PromoRow extends RowDataPacket {
   id: string;
   titulo: string;
   descripcion: string | null;
+  imagen_url: string | null;
   precio: number | null;
   negocio_id: string;
   negocio_nombre: string | null;
@@ -38,6 +39,7 @@ const SELECT_PROMO = `
     p.id,
     p.titulo,
     p.descripcion,
+    p.imagen_url,
     p.precio,
     p.negocio_id,
     n.nombre AS negocio_nombre,
@@ -111,44 +113,44 @@ export class MySqlPromotionRepository
       : null;
   }
 
-  async create(
-    data: CreatePromotionData
-  ): Promise<Promotion> {
-    await this.pool.execute(
-      `INSERT INTO promocion (
-         id,
-         titulo,
-         descripcion,
-         precio,
-         negocio_id,
-         fecha_inicio,
-         fecha_fin,
-         creado_por
-       )
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        data.id,
-        data.titulo,
-        data.descripcion ?? null,
-        data.precio ?? null,
-        data.negocioId,
-        data.fechaInicio,
-        data.fechaFin ?? null,
-        data.creadoPor
-      ]
+async create(
+  data: CreatePromotionData
+): Promise<Promotion> {
+  await this.pool.execute(
+    `INSERT INTO promocion (
+       id,
+       titulo,
+       descripcion,
+       precio,
+       negocio_id,
+       fecha_inicio,
+       fecha_fin,
+       creado_por
+     )
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      data.id,
+      data.titulo,
+      data.descripcion ?? null,
+      data.precio ?? null,
+      data.negocioId,
+      data.fechaInicio,
+      data.fechaFin ?? null,
+      data.creadoPor
+    ]
+  );
+
+  const created =
+    await this.findById(data.id);
+
+  if (!created) {
+    throw new Error(
+      "No se pudo recuperar la promoción creada"
     );
-
-    const created =
-      await this.findById(data.id);
-
-    if (!created) {
-      throw new Error(
-        "No se pudo recuperar la promoción creada"
-      );
-    }
-
-    return created;
   }
+
+  return created;
+}
 
   async update(
     id: string,
@@ -263,23 +265,24 @@ export class MySqlPromotionRepository
     return rows.length > 0;
   }
 
-  private mapToDomain(
-    row: PromoRow
-  ): Promotion {
-    return {
-      id: row.id,
-      titulo: row.titulo,
-      descripcion: row.descripcion,
-      precio:
-        row.precio === null
-          ? null
-          : Number(row.precio),
-      negocioId: row.negocio_id,
-      negocioNombre: row.negocio_nombre,
-      fechaInicio: row.fecha_inicio,
-      fechaFin: row.fecha_fin,
-      activo: Boolean(row.activo),
-      fechaCreacion: row.fecha_creacion
-    };
-  }
+ private mapToDomain(
+  row: PromoRow
+): Promotion {
+  return {
+    id: row.id,
+    titulo: row.titulo,
+    descripcion: row.descripcion,
+    imagenUrl: row.imagen_url,
+    precio:
+      row.precio === null
+        ? null
+        : Number(row.precio),
+    negocioId: row.negocio_id,
+    negocioNombre: row.negocio_nombre,
+    fechaInicio: row.fecha_inicio,
+    fechaFin: row.fecha_fin,
+    activo: Boolean(row.activo),
+    fechaCreacion: row.fecha_creacion
+  };
+}
 }
