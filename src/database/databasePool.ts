@@ -1,4 +1,4 @@
-import mysql, { type Pool } from "mysql2/promise";
+import { Pool } from "pg";
 
 function requiredEnv(name: string): string {
   const value = process.env[name];
@@ -11,15 +11,16 @@ function requiredEnv(name: string): string {
 }
 
 export function createDatabasePool(): Pool {
-  return mysql.createPool({
+  return new Pool({
     host: requiredEnv("DB_HOST"),
-    port: Number(process.env.DB_PORT ?? 3306),
+    port: Number(process.env.DB_PORT ?? 5432),
     user: requiredEnv("DB_USER"),
     password: requiredEnv("DB_PASSWORD"),
     database: requiredEnv("DB_NAME"),
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0
+    ssl: { rejectUnauthorized: false },
+    max: 10,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 2000
   });
 }
 

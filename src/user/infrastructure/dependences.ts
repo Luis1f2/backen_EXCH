@@ -1,4 +1,4 @@
-import type { Pool } from "mysql2/promise";
+﻿import type { Pool } from "pg";
 
 import { RegisterUser } from "../application/usecase/RegisterUser.js";
 import { LoginUser } from "../application/usecase/LoginUser.js";

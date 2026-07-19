@@ -1,4 +1,4 @@
-import type { Pool } from "mysql2/promise";
+﻿import type { Pool } from "pg";
 import { JwtTokenService } from "../../user/infrastructure/security/SecurityAdapters.js";
 import { ListCategories } from "../application/usecase/ListCategories.js";
 import { GetCategory } from "../application/usecase/GetCategory.js";

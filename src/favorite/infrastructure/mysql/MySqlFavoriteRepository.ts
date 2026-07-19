@@ -1,8 +1,4 @@
-import type {
-  Pool,
-  ResultSetHeader,
-  RowDataPacket
-} from "mysql2/promise";
+import type { Pool } from "pg";
 
 import type {
   Favorite,
@@ -15,15 +11,15 @@ import type {
   ListFavoritesFilters
 } from "../../domain/repositories/FavoriteRepository.js";
 
-interface FavoriteRow extends RowDataPacket {
+interface FavoriteRow {
   usuario_id: string;
   target_type: FavoriteTargetType;
   target_id: string;
   fecha_agregado: Date;
 }
 
-interface ExistsRow extends RowDataPacket {
-  total: number;
+interface ExistsRow {
+  total: string;
 }
 
 interface FavoriteTableConfig {
@@ -38,11 +34,11 @@ export class MySqlFavoriteRepository implements FavoriteRepository {
   async create(data: CreateFavoriteData): Promise<Favorite> {
     const config = this.getTableConfig(data.targetType);
 
-    await this.databasePool.execute(
+    await this.databasePool.query(
       `INSERT INTO ${config.favoriteTable} (
         usuario_id,
         ${config.targetColumn}
-      ) VALUES (?, ?)`,
+      ) VALUES ($1, $2)`,
       [
         data.userId,
         data.targetId
@@ -69,15 +65,15 @@ export class MySqlFavoriteRepository implements FavoriteRepository {
   ): Promise<Favorite | null> {
     const config = this.getTableConfig(targetType);
 
-    const [rows] = await this.databasePool.execute<FavoriteRow[]>(
+    const { rows } = await this.databasePool.query<FavoriteRow>(
       `SELECT
         usuario_id,
-        ? AS target_type,
+        $1 AS target_type,
         ${config.targetColumn} AS target_id,
         fecha_agregado
        FROM ${config.favoriteTable}
-       WHERE usuario_id = ?
-       AND ${config.targetColumn} = ?
+       WHERE usuario_id = $2
+       AND ${config.targetColumn} = $3
        LIMIT 1`,
       [
         targetType,
@@ -126,18 +122,17 @@ export class MySqlFavoriteRepository implements FavoriteRepository {
   ): Promise<boolean> {
     const config = this.getTableConfig(targetType);
 
-    const [result] =
-      await this.databasePool.execute<ResultSetHeader>(
-        `DELETE FROM ${config.favoriteTable}
-         WHERE usuario_id = ?
-         AND ${config.targetColumn} = ?`,
-        [
-          userId,
-          targetId
-        ]
-      );
+    const { rowCount } = await this.databasePool.query(
+      `DELETE FROM ${config.favoriteTable}
+       WHERE usuario_id = $1
+       AND ${config.targetColumn} = $2`,
+      [
+        userId,
+        targetId
+      ]
+    );
 
-    return result.affectedRows > 0;
+    return (rowCount ?? 0) > 0;
   }
 
   async targetExists(
@@ -146,11 +141,11 @@ export class MySqlFavoriteRepository implements FavoriteRepository {
   ): Promise<boolean> {
     const config = this.getTableConfig(targetType);
 
-    const [rows] = await this.databasePool.execute<ExistsRow[]>(
+    const { rows } = await this.databasePool.query<ExistsRow>(
       `SELECT COUNT(*) AS total
        FROM ${config.targetTable}
-       WHERE id = ?
-       AND activo = 1`,
+       WHERE id = $1
+       AND activo = true`,
       [targetId]
     );
 
@@ -163,17 +158,17 @@ export class MySqlFavoriteRepository implements FavoriteRepository {
   ): Promise<Favorite[]> {
     const config = this.getTableConfig(targetType);
 
-    const [rows] = await this.databasePool.execute<FavoriteRow[]>(
+    const { rows } = await this.databasePool.query<FavoriteRow>(
       `SELECT
         f.usuario_id,
-        ? AS target_type,
+        $1 AS target_type,
         f.${config.targetColumn} AS target_id,
         f.fecha_agregado
        FROM ${config.favoriteTable} f
        INNER JOIN ${config.targetTable} t
         ON t.id = f.${config.targetColumn}
-       WHERE f.usuario_id = ?
-       AND t.activo = 1
+       WHERE f.usuario_id = $2
+       AND t.activo = true
        ORDER BY f.fecha_agregado DESC`,
       [
         targetType,

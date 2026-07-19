@@ -1,8 +1,4 @@
-import type {
-  Pool,
-  ResultSetHeader,
-  RowDataPacket
-} from "mysql2/promise";
+import type { Pool } from "pg";
 
 import type {
   Review,
@@ -16,7 +12,7 @@ import type {
   UpdateReviewData
 } from "../../domain/repositories/ReviewRepository.js";
 
-interface ReviewRow extends RowDataPacket {
+interface ReviewRow {
   id: string;
   usuario_id: string;
   target_type: ReviewTargetType;
@@ -26,8 +22,8 @@ interface ReviewRow extends RowDataPacket {
   fecha: Date;
 }
 
-interface ExistsRow extends RowDataPacket {
-  total: number;
+interface ExistsRow {
+  total: string;
 }
 
 type SqlValue = string | number | boolean | Date | Buffer | null;
@@ -43,14 +39,14 @@ export class MySqlReviewRepository implements ReviewRepository {
   async create(data: CreateReviewData): Promise<Review> {
     const config = this.getReviewTableConfig(data.targetType);
 
-    await this.databasePool.execute(
+    await this.databasePool.query(
       `INSERT INTO ${config.table} (
         id,
         usuario_id,
         ${config.targetColumn},
         calificacion,
         comentario
-      ) VALUES (?, ?, ?, ?, ?)`,
+      ) VALUES ($1, $2, $3, $4, $5)`,
       [
         data.id,
         data.userId,
@@ -72,7 +68,7 @@ export class MySqlReviewRepository implements ReviewRepository {
   }
 
   async findById(id: string): Promise<Review | null> {
-    const [rows] = await this.databasePool.execute<ReviewRow[]>(
+    const { rows } = await this.databasePool.query<ReviewRow>(
       `SELECT
         id,
         usuario_id,
@@ -82,7 +78,7 @@ export class MySqlReviewRepository implements ReviewRepository {
         comentario,
         fecha
        FROM resena_destino
-       WHERE id = ?
+       WHERE id = $1
 
        UNION ALL
 
@@ -95,7 +91,7 @@ export class MySqlReviewRepository implements ReviewRepository {
         comentario,
         fecha
        FROM resena_negocio
-       WHERE id = ?
+       WHERE id = $2
 
        UNION ALL
 
@@ -108,7 +104,7 @@ export class MySqlReviewRepository implements ReviewRepository {
         comentario,
         fecha
        FROM resena_ubicacion
-       WHERE id = ?
+       WHERE id = $3
 
        LIMIT 1`,
       [id, id, id]
@@ -126,18 +122,18 @@ export class MySqlReviewRepository implements ReviewRepository {
   ): Promise<Review | null> {
     const config = this.getReviewTableConfig(targetType);
 
-    const [rows] = await this.databasePool.execute<ReviewRow[]>(
+    const { rows } = await this.databasePool.query<ReviewRow>(
       `SELECT
         id,
         usuario_id,
-        ? AS target_type,
+        $1 AS target_type,
         ${config.targetColumn} AS target_id,
         calificacion,
         comentario,
         fecha
        FROM ${config.table}
-       WHERE usuario_id = ?
-       AND ${config.targetColumn} = ?
+       WHERE usuario_id = $2
+       AND ${config.targetColumn} = $3
        LIMIT 1`,
       [targetType, userId, targetId]
     );
@@ -150,17 +146,17 @@ export class MySqlReviewRepository implements ReviewRepository {
   async list(filters: ListReviewsFilters): Promise<Review[]> {
     const config = this.getReviewTableConfig(filters.targetType);
 
-    const [rows] = await this.databasePool.execute<ReviewRow[]>(
+    const { rows } = await this.databasePool.query<ReviewRow>(
       `SELECT
         id,
         usuario_id,
-        ? AS target_type,
+        $1 AS target_type,
         ${config.targetColumn} AS target_id,
         calificacion,
         comentario,
         fecha
        FROM ${config.table}
-       WHERE ${config.targetColumn} = ?
+       WHERE ${config.targetColumn} = $2
        ORDER BY fecha DESC`,
       [filters.targetType, filters.targetId]
     );
@@ -179,16 +175,17 @@ export class MySqlReviewRepository implements ReviewRepository {
     }
 
     const config = this.getReviewTableConfig(currentReview.targetType);
+    let p = 0;
     const fields: string[] = [];
     const values: SqlValue[] = [];
 
     if (data.rating !== undefined) {
-      fields.push("calificacion = ?");
+      fields.push(`calificacion = $${++p}`);
       values.push(data.rating);
     }
 
     if (data.comment !== undefined) {
-      fields.push("comentario = ?");
+      fields.push(`comentario = $${++p}`);
       values.push(data.comment);
     }
 
@@ -198,10 +195,10 @@ export class MySqlReviewRepository implements ReviewRepository {
 
     values.push(id);
 
-    await this.databasePool.execute(
+    await this.databasePool.query(
       `UPDATE ${config.table}
        SET ${fields.join(", ")}
-       WHERE id = ?`,
+       WHERE id = $${p + 1}`,
       values
     );
 
@@ -222,21 +219,20 @@ export class MySqlReviewRepository implements ReviewRepository {
 
     const config = this.getReviewTableConfig(currentReview.targetType);
 
-    const [result] =
-      await this.databasePool.execute<ResultSetHeader>(
-        `DELETE FROM ${config.table}
-         WHERE id = ?`,
-        [id]
-      );
+    const { rowCount } = await this.databasePool.query(
+      `DELETE FROM ${config.table}
+       WHERE id = $1`,
+      [id]
+    );
 
-    if (result.affectedRows > 0) {
+    if ((rowCount ?? 0) > 0) {
       await this.refreshMetrics(
         currentReview.targetType,
         currentReview.targetId
       );
     }
 
-    return result.affectedRows > 0;
+    return (rowCount ?? 0) > 0;
   }
 
   async targetExists(
@@ -246,12 +242,12 @@ export class MySqlReviewRepository implements ReviewRepository {
     const { table, activeColumn } = this.getTargetTableConfig(targetType);
 
     const activeCondition =
-      activeColumn ? `AND ${activeColumn} = 1` : "";
+      activeColumn ? `AND ${activeColumn} = true` : "";
 
-    const [rows] = await this.databasePool.execute<ExistsRow[]>(
+    const { rows } = await this.databasePool.query<ExistsRow>(
       `SELECT COUNT(*) AS total
        FROM ${table}
-       WHERE id = ?
+       WHERE id = $1
        ${activeCondition}`,
       [targetId]
     );
@@ -263,23 +259,14 @@ export class MySqlReviewRepository implements ReviewRepository {
     targetType: ReviewTargetType
   ): ReviewTableConfig {
     if (targetType === "destination") {
-      return {
-        table: "resena_destino",
-        targetColumn: "destino_id"
-      };
+      return { table: "resena_destino", targetColumn: "destino_id" };
     }
 
     if (targetType === "business") {
-      return {
-        table: "resena_negocio",
-        targetColumn: "negocio_id"
-      };
+      return { table: "resena_negocio", targetColumn: "negocio_id" };
     }
 
-    return {
-      table: "resena_ubicacion",
-      targetColumn: "ubicacion_id"
-    };
+    return { table: "resena_ubicacion", targetColumn: "ubicacion_id" };
   }
 
   private getTargetTableConfig(targetType: ReviewTargetType): {
@@ -287,23 +274,14 @@ export class MySqlReviewRepository implements ReviewRepository {
     activeColumn: "activo" | null;
   } {
     if (targetType === "destination") {
-      return {
-        table: "destino",
-        activeColumn: "activo"
-      };
+      return { table: "destino", activeColumn: "activo" };
     }
 
     if (targetType === "business") {
-      return {
-        table: "negocio_turistico",
-        activeColumn: "activo"
-      };
+      return { table: "negocio_turistico", activeColumn: "activo" };
     }
 
-    return {
-      table: "ubicacion",
-      activeColumn: null
-    };
+    return { table: "ubicacion", activeColumn: null };
   }
 
   private async refreshMetrics(
@@ -311,21 +289,21 @@ export class MySqlReviewRepository implements ReviewRepository {
     targetId: string
   ): Promise<void> {
     if (targetType === "destination") {
-      await this.databasePool.execute(
+      await this.databasePool.query(
         `INSERT INTO destino_metrica (
           destino_id,
           calificacion_promedio,
           total_resenas
         )
         SELECT
-          ?,
+          $1,
           COALESCE(AVG(calificacion), 0.00),
           COUNT(*)
         FROM resena_destino
-        WHERE destino_id = ?
-        ON DUPLICATE KEY UPDATE
-          calificacion_promedio = VALUES(calificacion_promedio),
-          total_resenas = VALUES(total_resenas),
+        WHERE destino_id = $2
+        ON CONFLICT (destino_id) DO UPDATE SET
+          calificacion_promedio = EXCLUDED.calificacion_promedio,
+          total_resenas = EXCLUDED.total_resenas,
           fecha_actualizacion = CURRENT_TIMESTAMP`,
         [targetId, targetId]
       );
@@ -334,21 +312,21 @@ export class MySqlReviewRepository implements ReviewRepository {
     }
 
     if (targetType === "business") {
-      await this.databasePool.execute(
+      await this.databasePool.query(
         `INSERT INTO negocio_metrica (
           negocio_id,
           calificacion_promedio,
           total_resenas
         )
         SELECT
-          ?,
+          $1,
           COALESCE(AVG(calificacion), 0.00),
           COUNT(*)
         FROM resena_negocio
-        WHERE negocio_id = ?
-        ON DUPLICATE KEY UPDATE
-          calificacion_promedio = VALUES(calificacion_promedio),
-          total_resenas = VALUES(total_resenas),
+        WHERE negocio_id = $2
+        ON CONFLICT (negocio_id) DO UPDATE SET
+          calificacion_promedio = EXCLUDED.calificacion_promedio,
+          total_resenas = EXCLUDED.total_resenas,
           fecha_actualizacion = CURRENT_TIMESTAMP`,
         [targetId, targetId]
       );

@@ -1,7 +1,4 @@
-import type {
-  Pool,
-  RowDataPacket
-} from "mysql2/promise";
+import type { Pool } from "pg";
 
 import type { Location } from "../../domain/entities/Location.js";
 
@@ -12,7 +9,7 @@ import type {
   UpdateLocationData
 } from "../../domain/repositories/LocationRepository.js";
 
-interface LocationRow extends RowDataPacket {
+interface LocationRow {
   id: string;
   latitud: string;
   longitud: string;
@@ -27,7 +24,7 @@ interface LocationRow extends RowDataPacket {
   fecha_creacion: Date;
 }
 
-interface CatalogRow extends RowDataPacket {
+interface CatalogRow {
   id: string;
 }
 
@@ -37,7 +34,7 @@ export class MySqlLocationRepository implements LocationRepository {
   constructor(private readonly databasePool: Pool) {}
 
   async create(data: CreateLocationData): Promise<Location> {
-    await this.databasePool.execute(
+    await this.databasePool.query(
       `INSERT INTO ubicacion (
         id,
         latitud,
@@ -50,7 +47,7 @@ export class MySqlLocationRepository implements LocationRepository {
         proveedor_place_id,
         creado_por_usuario_id,
         estado_revision_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
       [
         data.id,
         data.latitude,
@@ -76,7 +73,7 @@ export class MySqlLocationRepository implements LocationRepository {
   }
 
   async findById(id: string): Promise<Location | null> {
-    const [rows] = await this.databasePool.execute<LocationRow[]>(
+    const { rows } = await this.databasePool.query<LocationRow>(
       `SELECT
         id,
         latitud,
@@ -91,7 +88,7 @@ export class MySqlLocationRepository implements LocationRepository {
         estado_revision_id,
         fecha_creacion
        FROM ubicacion
-       WHERE id = ?
+       WHERE id = $1
        LIMIT 1`,
       [id]
     );
@@ -102,16 +99,17 @@ export class MySqlLocationRepository implements LocationRepository {
   }
 
   async list(filters: ListLocationsFilters): Promise<Location[]> {
+    let p = 0;
     const conditions: string[] = [];
     const values: SqlValue[] = [];
 
     if (filters.municipality) {
-      conditions.push("municipio = ?");
+      conditions.push(`municipio = $${++p}`);
       values.push(filters.municipality);
     }
 
     if (filters.state) {
-      conditions.push("estado = ?");
+      conditions.push(`estado = $${++p}`);
       values.push(filters.state);
     }
 
@@ -123,7 +121,7 @@ export class MySqlLocationRepository implements LocationRepository {
         ? `WHERE ${conditions.join(" AND ")}`
         : "";
 
-    const [rows] = await this.databasePool.execute<LocationRow[]>(
+    const { rows } = await this.databasePool.query<LocationRow>(
       `SELECT
         id,
         latitud,
@@ -140,8 +138,8 @@ export class MySqlLocationRepository implements LocationRepository {
        FROM ubicacion
        ${where}
        ORDER BY fecha_creacion DESC
-       LIMIT ?
-       OFFSET ?`,
+       LIMIT $${p + 1}
+       OFFSET $${p + 2}`,
       values
     );
 
@@ -152,46 +150,47 @@ export class MySqlLocationRepository implements LocationRepository {
     id: string,
     data: UpdateLocationData
   ): Promise<Location | null> {
+    let p = 0;
     const fields: string[] = [];
     const values: SqlValue[] = [];
 
     if (data.latitude !== undefined) {
-      fields.push("latitud = ?");
+      fields.push(`latitud = $${++p}`);
       values.push(data.latitude);
     }
 
     if (data.longitude !== undefined) {
-      fields.push("longitud = ?");
+      fields.push(`longitud = $${++p}`);
       values.push(data.longitude);
     }
 
     if (data.address !== undefined) {
-      fields.push("direccion = ?");
+      fields.push(`direccion = $${++p}`);
       values.push(data.address);
     }
 
     if (data.municipality !== undefined) {
-      fields.push("municipio = ?");
+      fields.push(`municipio = $${++p}`);
       values.push(data.municipality);
     }
 
     if (data.state !== undefined) {
-      fields.push("estado = ?");
+      fields.push(`estado = $${++p}`);
       values.push(data.state);
     }
 
     if (data.mapProvider !== undefined) {
-      fields.push("proveedor_mapa = ?");
+      fields.push(`proveedor_mapa = $${++p}`);
       values.push(data.mapProvider);
     }
 
     if (data.providerPlaceId !== undefined) {
-      fields.push("proveedor_place_id = ?");
+      fields.push(`proveedor_place_id = $${++p}`);
       values.push(data.providerPlaceId);
     }
 
     if (data.reviewStatusId !== undefined) {
-      fields.push("estado_revision_id = ?");
+      fields.push(`estado_revision_id = $${++p}`);
       values.push(data.reviewStatusId);
     }
 
@@ -201,10 +200,10 @@ export class MySqlLocationRepository implements LocationRepository {
 
     values.push(id);
 
-    await this.databasePool.execute(
+    await this.databasePool.query(
       `UPDATE ubicacion
        SET ${fields.join(", ")}
-       WHERE id = ?`,
+       WHERE id = $${p + 1}`,
       values
     );
 
@@ -223,10 +222,10 @@ export class MySqlLocationRepository implements LocationRepository {
     table: "origen_ubicacion" | "estado_revision",
     name: string
   ): Promise<string | null> {
-    const [rows] = await this.databasePool.execute<CatalogRow[]>(
+    const { rows } = await this.databasePool.query<CatalogRow>(
       `SELECT id
        FROM ${table}
-       WHERE nombre = ?
+       WHERE nombre = $1
        LIMIT 1`,
       [name]
     );

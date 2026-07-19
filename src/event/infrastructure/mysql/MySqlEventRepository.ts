@@ -1,8 +1,4 @@
-import type {
-  Pool,
-  ResultSetHeader,
-  RowDataPacket,
-} from "mysql2/promise";
+import type { Pool } from "pg";
 import type { Event } from "../../domain/entities/Event.js";
 import type {
   CreateEventData,
@@ -13,9 +9,7 @@ import type {
 
 type SqlValue = string | number | boolean | Date | Buffer | null;
 
-/*Le agregue nadamas imagen_url para que guarde la rura de las imagenes */
-
-interface EventRow extends RowDataPacket {
+interface EventRow {
   id: string;
   titulo: string;
   descripcion: string | null;
@@ -26,7 +20,7 @@ interface EventRow extends RowDataPacket {
   categoria_id: string | null;
   categoria_nombre: string | null;
   municipio: string | null;
-  activo: number;
+  activo: boolean;
   fecha_creacion: Date;
 }
 
@@ -45,11 +39,9 @@ const SELECT_EVENTO = `
     c.nombre AS categoria_nombre,
     u.municipio
   FROM evento e
-  LEFT JOIN categoria c
-    ON c.id = e.categoria_id
-  LEFT JOIN ubicacion u
-    ON u.id = e.ubicacion_id
-  WHERE e.activo = 1
+  LEFT JOIN categoria c ON c.id = e.categoria_id
+  LEFT JOIN ubicacion u ON u.id = e.ubicacion_id
+  WHERE e.activo = true
 `;
 
 export class MySqlEventRepository implements EventRepository {
@@ -58,28 +50,29 @@ export class MySqlEventRepository implements EventRepository {
   async list(filters: ListEventsFilter = {}): Promise<Event[]> {
     let query = SELECT_EVENTO;
     const values: SqlValue[] = [];
+    let p = 0;
 
     if (filters.proximasOnly) {
       query += " AND e.fecha_inicio >= NOW()";
     }
 
     if (filters.categoriaId) {
-      query += " AND e.categoria_id = ?";
+      query += ` AND e.categoria_id = $${++p}`;
       values.push(filters.categoriaId);
     }
 
     query += " ORDER BY e.fecha_inicio ASC";
 
-    const [rows] = await this.pool.execute<EventRow[]>(query, values);
+    const { rows } = await this.pool.query<EventRow>(query, values);
     return rows.map((row) => this.mapToDomain(row));
   }
 
   async categoryCanBeUsedForEvents(categoryId: string): Promise<boolean> {
-    const [rows] = await this.pool.execute<RowDataPacket[]>(
+    const { rows } = await this.pool.query<{ id: string }>(
       `SELECT id
        FROM categoria
-       WHERE id = ?
-         AND aplica_eventos = 1
+       WHERE id = $1
+         AND aplica_eventos = true
        LIMIT 1`,
       [categoryId],
     );
@@ -88,16 +81,16 @@ export class MySqlEventRepository implements EventRepository {
   }
 
   async findById(id: string): Promise<Event | null> {
-    const query = `${SELECT_EVENTO} AND e.id = ? LIMIT 1`;
-    const [rows] = await this.pool.execute<EventRow[]>(query, [id]);
+    const query = `${SELECT_EVENTO} AND e.id = $1 LIMIT 1`;
+    const { rows } = await this.pool.query<EventRow>(query, [id]);
     return rows[0] ? this.mapToDomain(rows[0]) : null;
   }
 
   async create(data: CreateEventData): Promise<Event> {
-    await this.pool.execute(
+    await this.pool.query(
       `INSERT INTO evento
         (id, titulo, descripcion, imagen_url, fecha_inicio, fecha_fin, ubicacion_id, categoria_id, creado_por)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
       [
         data.id,
         data.titulo,
@@ -120,41 +113,42 @@ export class MySqlEventRepository implements EventRepository {
   }
 
   async update(id: string, data: UpdateEventData): Promise<Event | null> {
+    let p = 0;
     const fields: string[] = [];
     const values: SqlValue[] = [];
 
     if (data.titulo !== undefined) {
-      fields.push("titulo = ?");
+      fields.push(`titulo = $${++p}`);
       values.push(data.titulo);
     }
 
     if (data.descripcion !== undefined) {
-      fields.push("descripcion = ?");
+      fields.push(`descripcion = $${++p}`);
       values.push(data.descripcion);
     }
 
     if (data.imagenUrl !== undefined) {
-      fields.push("imagen_url = ?");
+      fields.push(`imagen_url = $${++p}`);
       values.push(data.imagenUrl);
     }
 
     if (data.fechaInicio !== undefined) {
-      fields.push("fecha_inicio = ?");
+      fields.push(`fecha_inicio = $${++p}`);
       values.push(data.fechaInicio);
     }
 
     if (data.fechaFin !== undefined) {
-      fields.push("fecha_fin = ?");
+      fields.push(`fecha_fin = $${++p}`);
       values.push(data.fechaFin);
     }
 
     if (data.ubicacionId !== undefined) {
-      fields.push("ubicacion_id = ?");
+      fields.push(`ubicacion_id = $${++p}`);
       values.push(data.ubicacionId);
     }
 
     if (data.categoriaId !== undefined) {
-      fields.push("categoria_id = ?");
+      fields.push(`categoria_id = $${++p}`);
       values.push(data.categoriaId);
     }
 
@@ -164,8 +158,8 @@ export class MySqlEventRepository implements EventRepository {
 
     values.push(id);
 
-    await this.pool.execute(
-      `UPDATE evento SET ${fields.join(", ")} WHERE id = ? AND activo = 1`,
+    await this.pool.query(
+      `UPDATE evento SET ${fields.join(", ")} WHERE id = $${p + 1} AND activo = true`,
       values,
     );
 
@@ -173,30 +167,28 @@ export class MySqlEventRepository implements EventRepository {
   }
 
   async delete(id: string): Promise<boolean> {
-    const [result] = await this.pool.execute<ResultSetHeader>(
-      "UPDATE evento SET activo = 0 WHERE id = ? AND activo = 1",
+    const { rowCount } = await this.pool.query(
+      "UPDATE evento SET activo = false WHERE id = $1 AND activo = true",
       [id],
     );
 
-    return result.affectedRows > 0;
+    return (rowCount ?? 0) > 0;
   }
 
-private mapToDomain(
-  row: EventRow
-): Event {
-  return {
-    id: row.id,
-    titulo: row.titulo,
-    descripcion: row.descripcion,
-    imagenUrl: row.imagen_url,
-    fechaInicio: row.fecha_inicio,
-    fechaFin: row.fecha_fin,
-    ubicacionId: row.ubicacion_id,
-    categoriaId: row.categoria_id,
-    categoriaNombre: row.categoria_nombre,
-    municipio: row.municipio,
-    activo: Boolean(row.activo),
-    fechaCreacion: row.fecha_creacion
-  };
-}
+  private mapToDomain(row: EventRow): Event {
+    return {
+      id: row.id,
+      titulo: row.titulo,
+      descripcion: row.descripcion,
+      imagenUrl: row.imagen_url,
+      fechaInicio: row.fecha_inicio,
+      fechaFin: row.fecha_fin,
+      ubicacionId: row.ubicacion_id,
+      categoriaId: row.categoria_id,
+      categoriaNombre: row.categoria_nombre,
+      municipio: row.municipio,
+      activo: Boolean(row.activo),
+      fechaCreacion: row.fecha_creacion
+    };
+  }
 }

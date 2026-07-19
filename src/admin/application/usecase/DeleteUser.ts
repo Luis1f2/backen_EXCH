@@ -1,8 +1,4 @@
-import type {
-  Pool,
-  ResultSetHeader,
-  RowDataPacket,
-} from "mysql2/promise";
+import type { Pool } from "pg";
 
 import { AppError } from "../../../user/application/errors/AppError.js";
 
@@ -20,43 +16,32 @@ export class DeleteUser {
       );
     }
 
-    const [rows] =
-      await this.pool.execute<RowDataPacket[]>(
-        `SELECT id, activo
-         FROM usuario
-         WHERE id = ?
-         LIMIT 1`,
-        [targetUserId],
-      );
+    const { rows } = await this.pool.query<{ id: string; activo: boolean }>(
+      `SELECT id, activo
+       FROM usuario
+       WHERE id = $1
+       LIMIT 1`,
+      [targetUserId],
+    );
 
     if (rows.length === 0) {
-      throw new AppError(
-        "Usuario no encontrado",
-        404,
-      );
+      throw new AppError("Usuario no encontrado", 404);
     }
 
-    if (!Boolean(rows[0].activo)) {
-      throw new AppError(
-        "El usuario ya está desactivado",
-        409,
-      );
+    if (!rows[0].activo) {
+      throw new AppError("El usuario ya está desactivado", 409);
     }
 
-    const [result] =
-      await this.pool.execute<ResultSetHeader>(
-        `UPDATE usuario
-         SET activo = 0
-         WHERE id = ?
-           AND activo = 1`,
-        [targetUserId],
-      );
+    const { rowCount } = await this.pool.query(
+      `UPDATE usuario
+       SET activo = false
+       WHERE id = $1
+         AND activo = true`,
+      [targetUserId],
+    );
 
-    if (result.affectedRows === 0) {
-      throw new AppError(
-        "No se pudo desactivar el usuario",
-        500,
-      );
+    if ((rowCount ?? 0) === 0) {
+      throw new AppError("No se pudo desactivar el usuario", 500);
     }
   }
 }

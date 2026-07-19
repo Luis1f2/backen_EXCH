@@ -1,4 +1,4 @@
-import type { Pool } from "mysql2/promise";
+﻿import type { Pool } from "pg";
 
 import { ListarDestinos } from "../applications/usecase/ListarDestinos.js";
 import { ListarDestinosCercanos } from "../applications/usecase/ListarDestinosCercanos.js";

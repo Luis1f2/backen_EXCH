@@ -1,7 +1,4 @@
-import type {
-  Pool,
-  RowDataPacket
-} from "mysql2/promise";
+import type { Pool } from "pg";
 
 import type {
   Alert,
@@ -14,7 +11,7 @@ import type {
   ListAlertsFilters
 } from "../../domain/repositories/AlertRepository.js";
 
-interface AlertRow extends RowDataPacket {
+interface AlertRow {
   id: string;
   tipo_id: string;
   tipo_nombre: string;
@@ -30,12 +27,12 @@ interface AlertRow extends RowDataPacket {
   usuario_atendio_id: string | null;
 }
 
-interface CatalogRow extends RowDataPacket {
+interface CatalogRow {
   id: string;
 }
 
-interface ExistsRow extends RowDataPacket {
-  total: number;
+interface ExistsRow {
+  total: string;
 }
 
 type SqlValue = string | number | boolean | Date | Buffer | null;
@@ -44,7 +41,7 @@ export class MySqlAlertRepository implements AlertRepository {
   constructor(private readonly databasePool: Pool) {}
 
   async create(data: CreateAlertData): Promise<Alert> {
-    await this.databasePool.execute(
+    await this.databasePool.query(
       `INSERT INTO alerta (
         id,
         tipo_id,
@@ -53,7 +50,7 @@ export class MySqlAlertRepository implements AlertRepository {
         ambito_id,
         entidad_tipo_id,
         entidad_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
       [
         data.id,
         data.typeId,
@@ -75,9 +72,9 @@ export class MySqlAlertRepository implements AlertRepository {
   }
 
   async findById(id: string): Promise<Alert | null> {
-    const [rows] = await this.databasePool.execute<AlertRow[]>(
+    const { rows } = await this.databasePool.query<AlertRow>(
       `${this.baseSelect()}
-       WHERE a.id = ?
+       WHERE a.id = $1
        LIMIT 1`,
       [id]
     );
@@ -88,31 +85,32 @@ export class MySqlAlertRepository implements AlertRepository {
   }
 
   async list(filters: ListAlertsFilters): Promise<Alert[]> {
+    let p = 0;
     const conditions: string[] = [];
     const values: SqlValue[] = [];
 
     if (filters.typeName) {
-      conditions.push("ta.nombre = ?");
+      conditions.push(`ta.nombre = $${++p}`);
       values.push(filters.typeName);
     }
 
     if (filters.statusName) {
-      conditions.push("ea.nombre = ?");
+      conditions.push(`ea.nombre = $${++p}`);
       values.push(filters.statusName);
     }
 
     if (filters.scopeName) {
-      conditions.push("aa.nombre = ?");
+      conditions.push(`aa.nombre = $${++p}`);
       values.push(filters.scopeName);
     }
 
     if (filters.entityTypeName) {
-      conditions.push("tea.nombre = ?");
+      conditions.push(`tea.nombre = $${++p}`);
       values.push(filters.entityTypeName);
     }
 
     if (filters.entityId) {
-      conditions.push("a.entidad_id = ?");
+      conditions.push(`a.entidad_id = $${++p}`);
       values.push(filters.entityId);
     }
 
@@ -124,12 +122,12 @@ export class MySqlAlertRepository implements AlertRepository {
         ? `WHERE ${conditions.join(" AND ")}`
         : "";
 
-    const [rows] = await this.databasePool.execute<AlertRow[]>(
+    const { rows } = await this.databasePool.query<AlertRow>(
       `${this.baseSelect()}
        ${where}
        ORDER BY a.fecha_generada DESC
-       LIMIT ?
-       OFFSET ?`,
+       LIMIT $${p + 1}
+       OFFSET $${p + 2}`,
       values
     );
 
@@ -146,11 +144,11 @@ export class MySqlAlertRepository implements AlertRepository {
       throw new Error("Estado atendida no encontrado");
     }
 
-    await this.databasePool.execute(
+    await this.databasePool.query(
       `UPDATE alerta
-       SET estado_id = ?,
-           usuario_atendio_id = ?
-       WHERE id = ?`,
+       SET estado_id = $1,
+           usuario_atendio_id = $2
+       WHERE id = $3`,
       [statusId, userId, id]
     );
 
@@ -167,11 +165,11 @@ export class MySqlAlertRepository implements AlertRepository {
       throw new Error("Estado descartada no encontrado");
     }
 
-    await this.databasePool.execute(
+    await this.databasePool.query(
       `UPDATE alerta
-       SET estado_id = ?,
-           usuario_atendio_id = ?
-       WHERE id = ?`,
+       SET estado_id = $1,
+           usuario_atendio_id = $2
+       WHERE id = $3`,
       [statusId, userId, id]
     );
 
@@ -205,12 +203,12 @@ export class MySqlAlertRepository implements AlertRepository {
     const activeCondition =
       config.activeColumn === null
         ? ""
-        : `AND ${config.activeColumn} = 1`;
+        : `AND ${config.activeColumn} = true`;
 
-    const [rows] = await this.databasePool.execute<ExistsRow[]>(
+    const { rows } = await this.databasePool.query<ExistsRow>(
       `SELECT COUNT(*) AS total
        FROM ${config.table}
-       WHERE id = ?
+       WHERE id = $1
        ${activeCondition}`,
       [entityId]
     );
@@ -226,10 +224,10 @@ export class MySqlAlertRepository implements AlertRepository {
       | "tipo_entidad_alerta",
     name: string
   ): Promise<string | null> {
-    const [rows] = await this.databasePool.execute<CatalogRow[]>(
+    const { rows } = await this.databasePool.query<CatalogRow>(
       `SELECT id
        FROM ${table}
-       WHERE nombre = ?
+       WHERE nombre = $1
        LIMIT 1`,
       [name]
     );
@@ -250,44 +248,26 @@ export class MySqlAlertRepository implements AlertRepository {
     activeColumn: "activo" | null;
   } {
     if (entityType === "destino") {
-      return {
-        table: "destino",
-        activeColumn: "activo"
-      };
+      return { table: "destino", activeColumn: "activo" };
     }
 
     if (entityType === "negocio") {
-      return {
-        table: "negocio_turistico",
-        activeColumn: "activo"
-      };
+      return { table: "negocio_turistico", activeColumn: "activo" };
     }
 
     if (entityType === "ubicacion") {
-      return {
-        table: "ubicacion",
-        activeColumn: null
-      };
+      return { table: "ubicacion", activeColumn: null };
     }
 
     if (entityType === "resena_destino") {
-      return {
-        table: "resena_destino",
-        activeColumn: null
-      };
+      return { table: "resena_destino", activeColumn: null };
     }
 
     if (entityType === "resena_negocio") {
-      return {
-        table: "resena_negocio",
-        activeColumn: null
-      };
+      return { table: "resena_negocio", activeColumn: null };
     }
 
-    return {
-      table: "resena_ubicacion",
-      activeColumn: null
-    };
+    return { table: "resena_ubicacion", activeColumn: null };
   }
 
   private baseSelect(): string {

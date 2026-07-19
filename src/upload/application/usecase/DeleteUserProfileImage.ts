@@ -1,17 +1,9 @@
-import type {
-  Pool,
-  RowDataPacket
-} from "mysql2/promise";
+import type { Pool } from "pg";
 
-import { AppError } from
-  "../../../user/application/errors/AppError.js";
+import { AppError } from "../../../user/application/errors/AppError.js";
+import { removePreviousUpload } from "../../shared/uploadFileUtils.js";
 
-import {
-  removePreviousUpload
-} from "../../shared/uploadFileUtils.js";
-
-interface UserProfileImageRow
-  extends RowDataPacket {
+interface UserProfileImageRow {
   imagen_perfil_url: string | null;
 }
 
@@ -20,55 +12,30 @@ export class DeleteUserProfileImage {
     private readonly pool: Pool
   ) {}
 
-  async execute(
-    userId: string
-  ): Promise<void> {
-    /*
-     * Primero comprobamos que el usuario
-     * exista y obtenemos su imagen actual.
-     */
-    const [rows] =
-      await this.pool.execute<
-        UserProfileImageRow[]
-      >(
-        `SELECT imagen_perfil_url
-         FROM usuario
-         WHERE id = ?
-           AND activo = 1
-         LIMIT 1`,
-        [userId]
-      );
+  async execute(userId: string): Promise<void> {
+    const { rows } = await this.pool.query<UserProfileImageRow>(
+      `SELECT imagen_perfil_url
+       FROM usuario
+       WHERE id = $1
+         AND activo = true
+       LIMIT 1`,
+      [userId]
+    );
 
     const user = rows[0];
 
     if (!user) {
-      throw new AppError(
-        "Usuario no encontrado",
-        404
-      );
+      throw new AppError("Usuario no encontrado", 404);
     }
 
-    /*
-     * Quitamos la referencia de la BD.
-     *
-     * Esto funciona incluso si el usuario
-     * ya tenía imagen_perfil_url = NULL.
-     */
-    await this.pool.execute(
+    await this.pool.query(
       `UPDATE usuario
        SET imagen_perfil_url = NULL
-       WHERE id = ?
-         AND activo = 1`,
+       WHERE id = $1
+         AND activo = true`,
       [userId]
     );
 
-    /*
-     * Si había una imagen anterior,
-     * eliminamos también el archivo físico.
-     */
-    await removePreviousUpload(
-      user.imagen_perfil_url,
-      "usuarios"
-    );
+    await removePreviousUpload(user.imagen_perfil_url, "usuarios");
   }
 }

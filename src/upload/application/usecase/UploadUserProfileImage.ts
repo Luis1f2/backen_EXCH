@@ -1,17 +1,9 @@
-import type {
-  Pool,
-  ResultSetHeader,
-  RowDataPacket
-} from "mysql2/promise";
+import type { Pool } from "pg";
 
-import { AppError } from
-  "../../../user/application/errors/AppError.js";
+import { AppError } from "../../../user/application/errors/AppError.js";
+import { removePreviousUpload } from "../../shared/uploadFileUtils.js";
 
-import { removePreviousUpload } from
-  "../../shared/uploadFileUtils.js";
-
-interface UserImageRow
-  extends RowDataPacket {
+interface UserImageRow {
   imagen_perfil_url: string | null;
 }
 
@@ -29,59 +21,37 @@ export class UploadUserProfileImage {
     userId: string,
     filename: string
   ): Promise<UploadUserProfileImageResult> {
-    const [rows] =
-      await this.pool.execute<
-        UserImageRow[]
-      >(
-        `SELECT imagen_perfil_url
-         FROM usuario
-         WHERE id = ?
-           AND activo = 1
-         LIMIT 1`,
-        [userId]
-      );
+    const { rows } = await this.pool.query<UserImageRow>(
+      `SELECT imagen_perfil_url
+       FROM usuario
+       WHERE id = $1
+         AND activo = true
+       LIMIT 1`,
+      [userId]
+    );
 
     const user = rows[0];
 
     if (!user) {
-      throw new AppError(
-        "Usuario no encontrado",
-        404
-      );
+      throw new AppError("Usuario no encontrado", 404);
     }
 
-    const imageProfileUrl =
-      `/uploads/usuarios/${filename}`;
+    const imageProfileUrl = `/uploads/usuarios/${filename}`;
 
-    const [result] =
-      await this.pool.execute<
-        ResultSetHeader
-      >(
-        `UPDATE usuario
-         SET imagen_perfil_url = ?
-         WHERE id = ?
-           AND activo = 1`,
-        [
-          imageProfileUrl,
-          userId
-        ]
-      );
-
-    if (result.affectedRows === 0) {
-      throw new AppError(
-        "Usuario no encontrado",
-        404
-      );
-    }
-
-    await removePreviousUpload(
-      user.imagen_perfil_url,
-      "usuarios"
+    const { rowCount } = await this.pool.query(
+      `UPDATE usuario
+       SET imagen_perfil_url = $1
+       WHERE id = $2
+         AND activo = true`,
+      [imageProfileUrl, userId]
     );
 
-    return {
-      usuarioId: userId,
-      imageProfileUrl
-    };
+    if ((rowCount ?? 0) === 0) {
+      throw new AppError("Usuario no encontrado", 404);
+    }
+
+    await removePreviousUpload(user.imagen_perfil_url, "usuarios");
+
+    return { usuarioId: userId, imageProfileUrl };
   }
 }
