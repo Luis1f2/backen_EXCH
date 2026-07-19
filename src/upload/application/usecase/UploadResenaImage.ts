@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Pool, RowDataPacket } from "mysql2/promise";
+import type { Pool } from "pg";
 import { AppError } from "../../../user/application/errors/AppError.js";
 
 export type ResenaType = "resena_destino" | "resena_negocio" | "resena_ubicacion";
@@ -20,12 +20,12 @@ export class UploadResenaImage {
     userId: string,
     filename: string
   ): Promise<UploadResenaImageResult> {
-    const [tipoRows] = await this.pool.execute<RowDataPacket[]>(
-      "SELECT id FROM tipo_entidad_resena WHERE nombre = ? LIMIT 1",
+    const { rows } = await this.pool.query<{ id: string }>(
+      "SELECT id FROM tipo_entidad_resena WHERE nombre = $1 LIMIT 1",
       [tipo]
     );
 
-    const tipoRow = (tipoRows as RowDataPacket[])[0];
+    const tipoRow = rows[0];
 
     if (!tipoRow) {
       throw new AppError("Tipo de resena no valido", 400);
@@ -34,10 +34,10 @@ export class UploadResenaImage {
     const imagenUrl = `/uploads/resenas/${filename}`;
     const fotoId = randomUUID();
 
-    await this.pool.execute(
+    await this.pool.query(
       `INSERT INTO fotografia_resena (id, resena_tipo_id, resena_id, usuario_id, url_imagen)
-       VALUES (?, ?, ?, ?, ?)`,
-      [fotoId, tipoRow.id as string, resenaId, userId, imagenUrl]
+       VALUES ($1, $2, $3, $4, $5)`,
+      [fotoId, tipoRow.id, resenaId, userId, imagenUrl]
     );
 
     return { id: fotoId, resenaId, tipo, imagenUrl };

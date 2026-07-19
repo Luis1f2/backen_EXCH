@@ -1,8 +1,4 @@
-import type {
-  Pool,
-  ResultSetHeader,
-  RowDataPacket,
-} from "mysql2/promise";
+import type { Pool } from "pg";
 
 import type { Category } from "../../domain/entities/Category.js";
 import type {
@@ -14,18 +10,18 @@ import type {
 
 type SqlValue = string | number | boolean | Date | Buffer | null;
 
-interface CategoryRow extends RowDataPacket {
+interface CategoryRow {
   id: string;
   nombre: string;
   icono: string | null;
-  aplica_eventos: number;
-  aplica_destinos: number;
-  total_eventos_activos: number | string;
-  total_destinos_activos: number | string;
+  aplica_eventos: boolean;
+  aplica_destinos: boolean;
+  total_eventos_activos: string;
+  total_destinos_activos: string;
 }
 
-interface CategoryInUseRow extends RowDataPacket {
-  total: number | string;
+interface CategoryInUseRow {
+  total: string;
 }
 
 const SELECT_CATEGORY = `
@@ -37,11 +33,11 @@ const SELECT_CATEGORY = `
     c.aplica_destinos,
 
     COUNT(DISTINCT CASE
-      WHEN e.activo = 1 THEN e.id
+      WHEN e.activo = true THEN e.id
     END) AS total_eventos_activos,
 
     COUNT(DISTINCT CASE
-      WHEN d.activo = 1 THEN d.id
+      WHEN d.activo = true THEN d.id
     END) AS total_destinos_activos
 
   FROM categoria c
@@ -61,11 +57,11 @@ export class MySqlCategoryRepository implements CategoryRepository {
     const conditions: string[] = [];
 
     if (scope === "eventos") {
-      conditions.push("c.aplica_eventos = 1");
+      conditions.push("c.aplica_eventos = true");
     }
 
     if (scope === "destinos") {
-      conditions.push("c.aplica_destinos = 1");
+      conditions.push("c.aplica_destinos = true");
     }
 
     if (conditions.length > 0) {
@@ -83,7 +79,7 @@ export class MySqlCategoryRepository implements CategoryRepository {
       ORDER BY c.nombre ASC
     `;
 
-    const [rows] = await this.pool.execute<CategoryRow[]>(query);
+    const { rows } = await this.pool.query<CategoryRow>(query);
 
     return rows.map((row) => this.mapToDomain(row));
   }
@@ -92,7 +88,7 @@ export class MySqlCategoryRepository implements CategoryRepository {
     const query = `
       ${SELECT_CATEGORY}
 
-      WHERE c.id = ?
+      WHERE c.id = $1
 
       GROUP BY
         c.id,
@@ -104,7 +100,7 @@ export class MySqlCategoryRepository implements CategoryRepository {
       LIMIT 1
     `;
 
-    const [rows] = await this.pool.execute<CategoryRow[]>(query, [id]);
+    const { rows } = await this.pool.query<CategoryRow>(query, [id]);
 
     return rows[0] ? this.mapToDomain(rows[0]) : null;
   }
@@ -113,7 +109,7 @@ export class MySqlCategoryRepository implements CategoryRepository {
     const query = `
       ${SELECT_CATEGORY}
 
-      WHERE LOWER(TRIM(c.nombre)) = LOWER(TRIM(?))
+      WHERE LOWER(TRIM(c.nombre)) = LOWER(TRIM($1))
 
       GROUP BY
         c.id,
@@ -125,13 +121,13 @@ export class MySqlCategoryRepository implements CategoryRepository {
       LIMIT 1
     `;
 
-    const [rows] = await this.pool.execute<CategoryRow[]>(query, [nombre]);
+    const { rows } = await this.pool.query<CategoryRow>(query, [nombre]);
 
     return rows[0] ? this.mapToDomain(rows[0]) : null;
   }
 
   async create(data: CreateCategoryData): Promise<Category> {
-    await this.pool.execute<ResultSetHeader>(
+    await this.pool.query(
       `
         INSERT INTO categoria (
           id,
@@ -140,7 +136,7 @@ export class MySqlCategoryRepository implements CategoryRepository {
           aplica_eventos,
           aplica_destinos
         )
-        VALUES (?, ?, ?, ?, ?)
+        VALUES ($1, $2, $3, $4, $5)
       `,
       [
         data.id,
@@ -164,26 +160,27 @@ export class MySqlCategoryRepository implements CategoryRepository {
     id: string,
     data: UpdateCategoryData,
   ): Promise<Category | null> {
+    let p = 0;
     const fields: string[] = [];
     const values: SqlValue[] = [];
 
     if (data.nombre !== undefined) {
-      fields.push("nombre = ?");
+      fields.push(`nombre = $${++p}`);
       values.push(data.nombre);
     }
 
     if (data.icono !== undefined) {
-      fields.push("icono = ?");
+      fields.push(`icono = $${++p}`);
       values.push(data.icono);
     }
 
     if (data.aplicaAEventos !== undefined) {
-      fields.push("aplica_eventos = ?");
+      fields.push(`aplica_eventos = $${++p}`);
       values.push(data.aplicaAEventos);
     }
 
     if (data.aplicaADestinos !== undefined) {
-      fields.push("aplica_destinos = ?");
+      fields.push(`aplica_destinos = $${++p}`);
       values.push(data.aplicaADestinos);
     }
 
@@ -193,16 +190,16 @@ export class MySqlCategoryRepository implements CategoryRepository {
 
     values.push(id);
 
-    const [result] = await this.pool.execute<ResultSetHeader>(
+    const { rowCount } = await this.pool.query(
       `
         UPDATE categoria
         SET ${fields.join(", ")}
-        WHERE id = ?
+        WHERE id = $${p + 1}
       `,
       values,
     );
 
-    if (result.affectedRows === 0) {
+    if ((rowCount ?? 0) === 0) {
       return null;
     }
 
@@ -210,12 +207,12 @@ export class MySqlCategoryRepository implements CategoryRepository {
   }
 
   async isInUse(id: string): Promise<boolean> {
-    const [rows] = await this.pool.execute<CategoryInUseRow[]>(
+    const { rows } = await this.pool.query<CategoryInUseRow>(
       `
         SELECT (
-          (SELECT COUNT(*) FROM evento WHERE categoria_id = ?)
+          (SELECT COUNT(*) FROM evento WHERE categoria_id = $1)
           +
-          (SELECT COUNT(*) FROM destino WHERE categoria_id = ?)
+          (SELECT COUNT(*) FROM destino WHERE categoria_id = $2)
         ) AS total
       `,
       [id, id],
@@ -225,15 +222,15 @@ export class MySqlCategoryRepository implements CategoryRepository {
   }
 
   async delete(id: string): Promise<boolean> {
-    const [result] = await this.pool.execute<ResultSetHeader>(
+    const { rowCount } = await this.pool.query(
       `
         DELETE FROM categoria
-        WHERE id = ?
+        WHERE id = $1
       `,
       [id],
     );
 
-    return result.affectedRows > 0;
+    return (rowCount ?? 0) > 0;
   }
 
   private mapToDomain(row: CategoryRow): Category {

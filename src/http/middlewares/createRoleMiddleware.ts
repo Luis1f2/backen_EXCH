@@ -4,16 +4,13 @@ import type {
   Response,
 } from "express";
 
-import type {
-  Pool,
-  RowDataPacket,
-} from "mysql2/promise";
+import type { Pool } from "pg";
 
 import type { TokenService } from "../../user/application/ports/SecurityPorts.js";
 import { AppError } from "../../user/application/errors/AppError.js";
 import type { AuthenticatedRequest } from "./AuthenticatedRequest.js";
 
-interface UserRoleRow extends RowDataPacket {
+interface UserRoleRow {
   tipo_usuario: string;
 }
 
@@ -42,13 +39,12 @@ export function createRoleMiddleware(
 
       const userId = tokenService.verify(token);
 
-      const [rows] = await pool.execute<UserRoleRow[]>(
+      const { rows } = await pool.query<UserRoleRow>(
         `SELECT tu.nombre AS tipo_usuario
          FROM usuario u
-         INNER JOIN tipo_usuario tu
-           ON tu.id = u.tipo_usuario_id
-         WHERE u.id = ?
-           AND u.activo = 1
+         INNER JOIN tipo_usuario tu ON tu.id = u.tipo_usuario_id
+         WHERE u.id = $1
+           AND u.activo = true
          LIMIT 1`,
         [userId],
       );
@@ -56,17 +52,11 @@ export function createRoleMiddleware(
       const user = rows[0];
 
       if (!user) {
-        throw new AppError(
-          "Usuario no encontrado o inactivo",
-          401,
-        );
+        throw new AppError("Usuario no encontrado o inactivo", 401);
       }
 
       if (!allowedRoles.includes(user.tipo_usuario)) {
-        throw new AppError(
-          "No tienes permisos para realizar esta operación",
-          403,
-        );
+        throw new AppError("No tienes permisos para realizar esta operación", 403);
       }
 
       (request as AuthenticatedRequest).userId = userId;

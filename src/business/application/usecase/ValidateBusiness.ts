@@ -1,4 +1,4 @@
-import type { Pool, RowDataPacket, ResultSetHeader } from "mysql2/promise";
+import type { Pool } from "pg";
 import { AppError } from "../../../user/application/errors/AppError.js";
 
 export type ValidateAction = "approve" | "reject";
@@ -16,26 +16,26 @@ export class ValidateBusiness {
     businessId: string,
     action: ValidateAction
   ): Promise<ValidateBusinessResult> {
-    const [rows] = await this.pool.execute<RowDataPacket[]>(
-      "SELECT id FROM negocio_turistico WHERE id = ? AND activo = 1 LIMIT 1",
+    const { rows } = await this.pool.query<{ id: string }>(
+      "SELECT id FROM negocio_turistico WHERE id = $1 AND activo = true LIMIT 1",
       [businessId]
     );
 
-    if (!(rows as RowDataPacket[]).length) {
+    if (!rows.length) {
       throw new AppError("Negocio no encontrado", 404);
     }
 
     const isVerified = action === "approve";
 
-    await this.pool.execute<ResultSetHeader>(
-      "UPDATE negocio_turistico SET esta_verificado = ? WHERE id = ?",
-      [isVerified ? 1 : 0, businessId]
+    await this.pool.query(
+      "UPDATE negocio_turistico SET esta_verificado = $1 WHERE id = $2",
+      [isVerified, businessId]
     );
 
-    await this.pool.execute(
+    await this.pool.query(
       `UPDATE negocio_administrador
-       SET estado_solicitud = ?
-       WHERE negocio_id = ?`,
+       SET estado_solicitud = $1
+       WHERE negocio_id = $2`,
       [isVerified ? "aprobada" : "rechazada", businessId]
     );
 

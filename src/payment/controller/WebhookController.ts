@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
-import type { Pool } from 'mysql2/promise';
+import type { Pool } from 'pg';
 import type { StripeService } from '../StripeService.js';
 
 export class WebhookController {
@@ -18,8 +18,8 @@ export class WebhookController {
         const negocioId = session.metadata?.negocioId;
 
         if (negocioId) {
-          await this.pool.execute(
-            'UPDATE negocio_turistico SET esta_verificado = 1 WHERE id = ?',
+          await this.pool.query(
+            'UPDATE negocio_turistico SET esta_verificado = true WHERE id = $1',
             [negocioId],
           );
         }

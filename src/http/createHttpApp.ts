@@ -1,4 +1,4 @@
-import path from "node:path";
+﻿import path from "node:path";
 import express, {
   type ErrorRequestHandler,
   type Express,
@@ -6,7 +6,7 @@ import express, {
 import fs from "node:fs";
 import multer from "multer";
 import cors from "cors";
-import type { Pool } from "mysql2/promise";
+import type { Pool } from "pg";
 import { ZodError } from "zod";
 import { AppError } from "../user/application/errors/AppError.js";
 import { createUserModule } from "../user/infrastructure/dependences.js";

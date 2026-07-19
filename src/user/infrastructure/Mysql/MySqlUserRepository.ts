@@ -1,8 +1,4 @@
-import type {
-  Pool,
-  ResultSetHeader,
-  RowDataPacket
-} from "mysql2/promise";
+import type { Pool } from "pg";
 
 import type {
   User,
@@ -15,7 +11,7 @@ import type {
   UserRepository
 } from "../../domain/repositories/UserRepository.js";
 
-interface UserRow extends RowDataPacket {
+interface UserRow {
   id: string;
   nombre: string;
   email: string;
@@ -25,11 +21,11 @@ interface UserRow extends RowDataPacket {
   telefono: string | null;
   imagen_perfil_url: string | null;
   fecha_registro: Date;
-  es_premium: number;
-  activo: number;
+  es_premium: boolean;
+  activo: boolean;
 }
 
-interface UserTypeRow extends RowDataPacket {
+interface UserTypeRow {
   id: string;
 }
 
@@ -39,7 +35,7 @@ export class MySqlUserRepository implements UserRepository {
   constructor(private readonly databasePool: Pool) {}
 
   async create(data: CreateUserData): Promise<User> {
-    await this.databasePool.execute(
+    await this.databasePool.query(
       `INSERT INTO usuario (
         id,
         nombre,
@@ -47,7 +43,7 @@ export class MySqlUserRepository implements UserRepository {
         password_hash,
         tipo_usuario_id,
         telefono
-      ) VALUES (?, ?, ?, ?, ?, ?)`,
+      ) VALUES ($1, $2, $3, $4, $5, $6)`,
       [
         data.id,
         data.name,
@@ -68,18 +64,16 @@ export class MySqlUserRepository implements UserRepository {
   }
 
   async findById(id: string): Promise<User | null> {
-    return this.findOne("u.id = ?", [id], { soloActivos: true });
+    return this.findOne("u.id = $1", [id], { soloActivos: true });
   }
 
-  // El correo es unico para siempre en la tabla (uq_usuario_email no distingue
-  // activo), asi que la busqueda debe ver tambien cuentas borradas.
   async findByEmail(email: string): Promise<User | null> {
-    return this.findOne("u.email = ?", [email], { soloActivos: false });
+    return this.findOne("u.email = $1", [email], { soloActivos: false });
   }
 
   async findUserTypeIdByName(name: string): Promise<string | null> {
-    const [rows] = await this.databasePool.execute<UserTypeRow[]>(
-      `SELECT id FROM tipo_usuario WHERE nombre = ? LIMIT 1`,
+    const { rows } = await this.databasePool.query<UserTypeRow>(
+      `SELECT id FROM tipo_usuario WHERE nombre = $1 LIMIT 1`,
       [name]
     );
 
@@ -87,31 +81,32 @@ export class MySqlUserRepository implements UserRepository {
   }
 
   async update(id: string, data: UpdateUserData): Promise<User | null> {
+    let p = 0;
     const fields: string[] = [];
     const values: SqlValue[] = [];
 
     if (data.name !== undefined) {
-      fields.push("nombre = ?");
+      fields.push(`nombre = $${++p}`);
       values.push(data.name);
     }
 
     if (data.email !== undefined) {
-      fields.push("email = ?");
+      fields.push(`email = $${++p}`);
       values.push(data.email);
     }
 
     if (data.phone !== undefined) {
-      fields.push("telefono = ?");
+      fields.push(`telefono = $${++p}`);
       values.push(data.phone);
     }
 
     if (data.passwordHash !== undefined) {
-      fields.push("password_hash = ?");
+      fields.push(`password_hash = $${++p}`);
       values.push(data.passwordHash);
     }
 
     if (data.imgUrl !== undefined) {
-      fields.push("imagen_perfil_url = ?");
+      fields.push(`imagen_perfil_url = $${++p}`);
       values.push(data.imgUrl);
     }
 
@@ -121,8 +116,8 @@ export class MySqlUserRepository implements UserRepository {
 
     values.push(id);
 
-    await this.databasePool.execute(
-      `UPDATE usuario SET ${fields.join(", ")} WHERE id = ? AND activo = 1`,
+    await this.databasePool.query(
+      `UPDATE usuario SET ${fields.join(", ")} WHERE id = $${p + 1} AND activo = true`,
       values
     );
 
@@ -130,12 +125,12 @@ export class MySqlUserRepository implements UserRepository {
   }
 
   async delete(id: string): Promise<boolean> {
-    const [result] = await this.databasePool.execute<ResultSetHeader>(
-      `UPDATE usuario SET activo = 0 WHERE id = ? AND activo = 1`,
+    const { rowCount } = await this.databasePool.query(
+      `UPDATE usuario SET activo = false WHERE id = $1 AND activo = true`,
       [id]
     );
 
-    return result.affectedRows > 0;
+    return (rowCount ?? 0) > 0;
   }
 
   private async findOne(
@@ -143,9 +138,9 @@ export class MySqlUserRepository implements UserRepository {
     values: SqlValue[],
     options: { soloActivos: boolean }
   ): Promise<User | null> {
-    const filtroActivo = options.soloActivos ? "AND u.activo = 1" : "";
+    const filtroActivo = options.soloActivos ? "AND u.activo = true" : "";
 
-    const [rows] = await this.databasePool.execute<UserRow[]>(
+    const { rows } = await this.databasePool.query<UserRow>(
       `
         SELECT
           u.id,

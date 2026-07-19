@@ -1,7 +1,7 @@
-import { Router } from "express";
+﻿import { Router } from "express";
 
 import type { TokenService } from "../../../user/application/ports/SecurityPorts.js";
-import type { Pool } from "mysql2/promise";
+import type { Pool } from "pg";
 
 import { createAdminMiddleware } from "../../../http/middlewares/createAdminMiddleware.js";
 

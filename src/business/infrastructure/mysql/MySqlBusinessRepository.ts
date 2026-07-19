@@ -1,10 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import type {
-  Pool,
-  ResultSetHeader,
-  RowDataPacket
-} from "mysql2/promise";
+import type { Pool } from "pg";
 
 import type { Business } from "../../domain/entities/Business.js";
 
@@ -15,7 +11,7 @@ import type {
   UpdateBusinessData
 } from "../../domain/repositories/BusinessRepository.js";
 
-interface BusinessRow extends RowDataPacket {
+interface BusinessRow {
   id: string;
   nombre: string;
   descripcion: string | null;
@@ -23,19 +19,19 @@ interface BusinessRow extends RowDataPacket {
   ubicacion_id: string;
   precio_desde: string | null;
   imagen_url: string | null;
-  esta_verificado: number;
-  activo: number;
+  esta_verificado: boolean;
+  activo: boolean;
   fecha_creacion: Date;
   calificacion_promedio: string;
   total_resenas: number;
 }
 
-interface CatalogRow extends RowDataPacket {
+interface CatalogRow {
   id: string;
 }
 
-interface ExistsRow extends RowDataPacket {
-  total: number;
+interface ExistsRow {
+  total: string;
 }
 
 type SqlValue = string | number | boolean | Date | Buffer | null;
@@ -44,12 +40,12 @@ export class MySqlBusinessRepository implements BusinessRepository {
   constructor(private readonly databasePool: Pool) {}
 
   async create(data: CreateBusinessData): Promise<Business> {
-    const connection = await this.databasePool.getConnection();
+    const client = await this.databasePool.connect();
 
     try {
-      await connection.beginTransaction();
+      await client.query("BEGIN");
 
-      await connection.execute(
+      await client.query(
         `INSERT INTO negocio_turistico (
           id,
           nombre,
@@ -57,7 +53,7 @@ export class MySqlBusinessRepository implements BusinessRepository {
           tipo_negocio_id,
           ubicacion_id,
           precio_desde
-        ) VALUES (?, ?, ?, ?, ?, ?)`,
+        ) VALUES ($1, $2, $3, $4, $5, $6)`,
         [
           data.id,
           data.name,
@@ -68,21 +64,19 @@ export class MySqlBusinessRepository implements BusinessRepository {
         ]
       );
 
-      await connection.execute(
-        `INSERT INTO negocio_metrica (
-          negocio_id
-        ) VALUES (?)`,
+      await client.query(
+        `INSERT INTO negocio_metrica (negocio_id) VALUES ($1)`,
         [data.id]
       );
 
-      await connection.execute(
+      await client.query(
         `INSERT INTO negocio_administrador (
           id,
           usuario_id,
           negocio_id,
           rol,
           estado_solicitud
-        ) VALUES (?, ?, ?, ?, ?)`,
+        ) VALUES ($1, $2, $3, $4, $5)`,
         [
           randomUUID(),
           data.ownerUserId,
@@ -92,12 +86,12 @@ export class MySqlBusinessRepository implements BusinessRepository {
         ]
       );
 
-      await connection.commit();
+      await client.query("COMMIT");
     } catch (error) {
-      await connection.rollback();
+      await client.query("ROLLBACK");
       throw error;
     } finally {
-      connection.release();
+      client.release();
     }
 
     const business = await this.findById(data.id);
@@ -110,7 +104,7 @@ export class MySqlBusinessRepository implements BusinessRepository {
   }
 
   async findById(id: string): Promise<Business | null> {
-    const [rows] = await this.databasePool.execute<BusinessRow[]>(
+    const { rows } = await this.databasePool.query<BusinessRow>(
       `SELECT
         n.id,
         n.nombre,
@@ -126,8 +120,8 @@ export class MySqlBusinessRepository implements BusinessRepository {
         COALESCE(nm.total_resenas, 0) AS total_resenas
        FROM negocio_turistico n
        LEFT JOIN negocio_metrica nm ON nm.negocio_id = n.id
-       WHERE n.id = ?
-       AND n.activo = 1
+       WHERE n.id = $1
+       AND n.activo = true
        LIMIT 1`,
       [id]
     );
@@ -137,88 +131,67 @@ export class MySqlBusinessRepository implements BusinessRepository {
     return row ? this.mapToDomain(row) : null;
   }
 
-  async list(
-  filters: ListBusinessesFilters
-): Promise<Business[]> {
-  const conditions: string[] = [
-    "n.activo = 1",
-    "n.esta_verificado = 1"
-  ];
+  async list(filters: ListBusinessesFilters): Promise<Business[]> {
+    let p = 0;
+    const conditions: string[] = [
+      "n.activo = true",
+      "n.esta_verificado = true"
+    ];
+    const values: SqlValue[] = [];
 
-  const values: SqlValue[] = [];
+    if (filters.businessTypeId) {
+      conditions.push(`n.tipo_negocio_id = $${++p}`);
+      values.push(filters.businessTypeId);
+    }
 
-  if (filters.businessTypeId) {
-    conditions.push("n.tipo_negocio_id = ?");
-    values.push(filters.businessTypeId);
+    if (filters.locationId) {
+      conditions.push(`n.ubicacion_id = $${++p}`);
+      values.push(filters.locationId);
+    }
+
+    if (filters.municipality) {
+      conditions.push(`u.municipio = $${++p}`);
+      values.push(filters.municipality);
+    }
+
+    if (filters.state) {
+      conditions.push(`u.estado = $${++p}`);
+      values.push(filters.state);
+    }
+
+    const limit = Number(filters.limit);
+    const offset = Number(filters.offset);
+
+    const query = `
+      SELECT
+        n.id,
+        n.nombre,
+        n.descripcion,
+        n.tipo_negocio_id,
+        n.ubicacion_id,
+        n.precio_desde,
+        n.imagen_url,
+        n.esta_verificado,
+        n.activo,
+        n.fecha_creacion,
+        COALESCE(nm.calificacion_promedio, 0.00) AS calificacion_promedio,
+        COALESCE(nm.total_resenas, 0) AS total_resenas
+      FROM negocio_turistico n
+      INNER JOIN ubicacion u ON u.id = n.ubicacion_id
+      LEFT JOIN negocio_metrica nm ON nm.negocio_id = n.id
+      WHERE ${conditions.join(" AND ")}
+      ORDER BY n.fecha_creacion DESC
+      LIMIT ${limit}
+      OFFSET ${offset}
+    `;
+
+    const { rows } = await this.databasePool.query<BusinessRow>(query, values);
+
+    return rows.map((row) => this.mapToDomain(row));
   }
-
-  if (filters.locationId) {
-    conditions.push("n.ubicacion_id = ?");
-    values.push(filters.locationId);
-  }
-
-  if (filters.municipality) {
-    conditions.push("u.municipio = ?");
-    values.push(filters.municipality);
-  }
-
-  if (filters.state) {
-    conditions.push("u.estado = ?");
-    values.push(filters.state);
-  }
-
-  /*
-   * limit y offset ya fueron validados por Zod:
-   * limit: entero entre 1 y 100
-   * offset: entero mayor o igual que 0
-   */
-  const limit = Number(filters.limit);
-  const offset = Number(filters.offset);
-
-  const query = `
-    SELECT
-      n.id,
-      n.nombre,
-      n.descripcion,
-      n.tipo_negocio_id,
-      n.ubicacion_id,
-      n.precio_desde,
-      n.imagen_url,
-      n.esta_verificado,
-      n.activo,
-      n.fecha_creacion,
-      COALESCE(
-        nm.calificacion_promedio,
-        0.00
-      ) AS calificacion_promedio,
-      COALESCE(
-        nm.total_resenas,
-        0
-      ) AS total_resenas
-    FROM negocio_turistico n
-    INNER JOIN ubicacion u
-      ON u.id = n.ubicacion_id
-    LEFT JOIN negocio_metrica nm
-      ON nm.negocio_id = n.id
-    WHERE ${conditions.join(" AND ")}
-    ORDER BY n.fecha_creacion DESC
-    LIMIT ${limit}
-    OFFSET ${offset}
-  `;
-
-  const [rows] =
-    await this.databasePool.execute<BusinessRow[]>(
-      query,
-      values
-    );
-
-  return rows.map((row) =>
-    this.mapToDomain(row)
-  );
-}
 
   async listByAdministratorId(userId: string): Promise<Business[]> {
-    const [rows] = await this.databasePool.execute<BusinessRow[]>(
+    const { rows } = await this.databasePool.query<BusinessRow>(
       `SELECT
         n.id,
         n.nombre,
@@ -233,12 +206,11 @@ export class MySqlBusinessRepository implements BusinessRepository {
         COALESCE(nm.calificacion_promedio, 0.00) AS calificacion_promedio,
         COALESCE(nm.total_resenas, 0) AS total_resenas
        FROM negocio_turistico n
-       INNER JOIN negocio_administrador na
-        ON na.negocio_id = n.id
+       INNER JOIN negocio_administrador na ON na.negocio_id = n.id
        LEFT JOIN negocio_metrica nm ON nm.negocio_id = n.id
-       WHERE na.usuario_id = ?
-       AND na.activo = 1
-       AND n.activo = 1
+       WHERE na.usuario_id = $1
+       AND na.activo = true
+       AND n.activo = true
        ORDER BY n.fecha_creacion DESC`,
       [userId]
     );
@@ -250,31 +222,32 @@ export class MySqlBusinessRepository implements BusinessRepository {
     id: string,
     data: UpdateBusinessData
   ): Promise<Business | null> {
+    let p = 0;
     const fields: string[] = [];
     const values: SqlValue[] = [];
 
     if (data.name !== undefined) {
-      fields.push("nombre = ?");
+      fields.push(`nombre = $${++p}`);
       values.push(data.name);
     }
 
     if (data.description !== undefined) {
-      fields.push("descripcion = ?");
+      fields.push(`descripcion = $${++p}`);
       values.push(data.description);
     }
 
     if (data.businessTypeId !== undefined) {
-      fields.push("tipo_negocio_id = ?");
+      fields.push(`tipo_negocio_id = $${++p}`);
       values.push(data.businessTypeId);
     }
 
     if (data.locationId !== undefined) {
-      fields.push("ubicacion_id = ?");
+      fields.push(`ubicacion_id = $${++p}`);
       values.push(data.locationId);
     }
 
     if (data.priceFrom !== undefined) {
-      fields.push("precio_desde = ?");
+      fields.push(`precio_desde = $${++p}`);
       values.push(data.priceFrom);
     }
 
@@ -284,11 +257,11 @@ export class MySqlBusinessRepository implements BusinessRepository {
 
     values.push(id);
 
-    await this.databasePool.execute(
+    await this.databasePool.query(
       `UPDATE negocio_turistico
        SET ${fields.join(", ")}
-       WHERE id = ?
-       AND activo = 1`,
+       WHERE id = $${p + 1}
+       AND activo = true`,
       values
     );
 
@@ -296,23 +269,22 @@ export class MySqlBusinessRepository implements BusinessRepository {
   }
 
   async delete(id: string): Promise<boolean> {
-    const [result] =
-      await this.databasePool.execute<ResultSetHeader>(
-        `UPDATE negocio_turistico
-         SET activo = 0
-         WHERE id = ?
-         AND activo = 1`,
-        [id]
-      );
+    const { rowCount } = await this.databasePool.query(
+      `UPDATE negocio_turistico
+       SET activo = false
+       WHERE id = $1
+       AND activo = true`,
+      [id]
+    );
 
-    return result.affectedRows > 0;
+    return (rowCount ?? 0) > 0;
   }
 
   async findBusinessTypeIdByName(name: string): Promise<string | null> {
-    const [rows] = await this.databasePool.execute<CatalogRow[]>(
+    const { rows } = await this.databasePool.query<CatalogRow>(
       `SELECT id
        FROM tipo_negocio
-       WHERE nombre = ?
+       WHERE nombre = $1
        LIMIT 1`,
       [name]
     );
@@ -321,76 +293,64 @@ export class MySqlBusinessRepository implements BusinessRepository {
   }
 
   async locationExists(id: string): Promise<boolean> {
-    const [rows] = await this.databasePool.execute<ExistsRow[]>(
+    const { rows } = await this.databasePool.query<ExistsRow>(
       `SELECT COUNT(*) AS total
        FROM ubicacion
-       WHERE id = ?`,
+       WHERE id = $1`,
       [id]
     );
 
     return Number(rows[0]?.total ?? 0) > 0;
   }
 
-async isUserBusinessOwner(
-  userId: string,
-  businessId: string
-): Promise<boolean> {
-  const [rows] = await this.databasePool.execute<ExistsRow[]>(
-    `SELECT COUNT(*) AS total
-     FROM negocio_administrador na
-     INNER JOIN negocio_turistico n
-       ON n.id = na.negocio_id
-     WHERE na.usuario_id = ?
-       AND na.negocio_id = ?
-       AND na.rol = 'propietario'
-       AND na.activo = 1
-       AND n.activo = 1`,
-    [userId, businessId]
-  );
-
-  return Number(rows[0]?.total ?? 0) > 0;
-}
-
- async isUserBusinessAdministrator(
+  async isUserBusinessOwner(
     userId: string,
     businessId: string
   ): Promise<boolean> {
-    const [rows] =
-      await this.databasePool.execute<ExistsRow[]>(
-        `SELECT COUNT(*) AS total
-         FROM negocio_administrador na
-         INNER JOIN negocio_turistico n
-           ON n.id = na.negocio_id
-         WHERE na.usuario_id = ?
-           AND na.negocio_id = ?
-           AND na.activo = 1
-           AND na.estado_solicitud = 'aprobada'
-           AND n.activo = 1
-           AND n.esta_verificado = 1`,
-        [userId, businessId]
-      );
+    const { rows } = await this.databasePool.query<ExistsRow>(
+      `SELECT COUNT(*) AS total
+       FROM negocio_administrador na
+       INNER JOIN negocio_turistico n ON n.id = na.negocio_id
+       WHERE na.usuario_id = $1
+         AND na.negocio_id = $2
+         AND na.rol = 'propietario'
+         AND na.activo = true
+         AND n.activo = true`,
+      [userId, businessId]
+    );
 
-    return Number(
-      rows[0]?.total ?? 0
-    ) > 0;
+    return Number(rows[0]?.total ?? 0) > 0;
   }
 
-  async incrementViews(
+  async isUserBusinessAdministrator(
+    userId: string,
     businessId: string
-  ): Promise<void> {
-    await this.databasePool.execute(
-      `INSERT INTO negocio_metrica (
-         negocio_id,
-         total_visualizaciones
-       )
-       VALUES (?, 1)
-       ON DUPLICATE KEY UPDATE
-         total_visualizaciones =
-           total_visualizaciones + 1`,
+  ): Promise<boolean> {
+    const { rows } = await this.databasePool.query<ExistsRow>(
+      `SELECT COUNT(*) AS total
+       FROM negocio_administrador na
+       INNER JOIN negocio_turistico n ON n.id = na.negocio_id
+       WHERE na.usuario_id = $1
+         AND na.negocio_id = $2
+         AND na.activo = true
+         AND na.estado_solicitud = 'aprobada'
+         AND n.activo = true
+         AND n.esta_verificado = true`,
+      [userId, businessId]
+    );
+
+    return Number(rows[0]?.total ?? 0) > 0;
+  }
+
+  async incrementViews(businessId: string): Promise<void> {
+    await this.databasePool.query(
+      `INSERT INTO negocio_metrica (negocio_id, total_visualizaciones)
+       VALUES ($1, 1)
+       ON CONFLICT (negocio_id) DO UPDATE SET
+         total_visualizaciones = negocio_metrica.total_visualizaciones + 1`,
       [businessId]
     );
   }
-
 
   private mapToDomain(row: BusinessRow): Business {
     return {
@@ -401,7 +361,7 @@ async isUserBusinessOwner(
       locationId: row.ubicacion_id,
       priceFrom:
         row.precio_desde === null ? null : Number(row.precio_desde),
-        imageUrl: row.imagen_url,
+      imageUrl: row.imagen_url,
       isVerified: Boolean(row.esta_verificado),
       active: Boolean(row.activo),
       createdAt: row.fecha_creacion,

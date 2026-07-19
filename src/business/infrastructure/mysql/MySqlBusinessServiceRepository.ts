@@ -1,8 +1,4 @@
-import type {
-  Pool,
-  ResultSetHeader,
-  RowDataPacket
-} from "mysql2/promise";
+import type { Pool } from "pg";
 
 import type { BusinessService } from "../../domain/entities/BusinessServices.js";
 
@@ -12,13 +8,13 @@ import type {
   UpdateBusinessServiceData
 } from "../../domain/repositories/BusinessServicesRepositories.js";
 
-interface BusinessServiceRow extends RowDataPacket {
+interface BusinessServiceRow {
   id: string;
   negocio_id: string;
   nombre: string;
   descripcion: string | null;
   precio_adicional: string | null;
-  activo: number;
+  activo: boolean;
   fecha_creacion: Date;
   fecha_actualizacion: Date;
 }
@@ -40,8 +36,8 @@ export class MySqlBusinessServiceRepository
   async listByBusinessId(
     businessId: string
   ): Promise<BusinessService[]> {
-    const [rows] =
-      await this.databasePool.execute<BusinessServiceRow[]>(
+    const { rows } =
+      await this.databasePool.query<BusinessServiceRow>(
         `SELECT
            ns.id,
            ns.negocio_id,
@@ -52,26 +48,23 @@ export class MySqlBusinessServiceRepository
            ns.fecha_creacion,
            ns.fecha_actualizacion
          FROM negocio_servicio ns
-         INNER JOIN negocio_turistico n
-           ON n.id = ns.negocio_id
-         WHERE ns.negocio_id = ?
-           AND ns.activo = 1
-           AND n.activo = 1
-           AND n.esta_verificado = 1
+         INNER JOIN negocio_turistico n ON n.id = ns.negocio_id
+         WHERE ns.negocio_id = $1
+           AND ns.activo = true
+           AND n.activo = true
+           AND n.esta_verificado = true
          ORDER BY ns.nombre ASC`,
         [businessId]
       );
 
-    return rows.map((row) =>
-      this.mapToDomain(row)
-    );
+    return rows.map((row) => this.mapToDomain(row));
   }
 
   async findById(
     serviceId: string
   ): Promise<BusinessService | null> {
-    const [rows] =
-      await this.databasePool.execute<BusinessServiceRow[]>(
+    const { rows } =
+      await this.databasePool.query<BusinessServiceRow>(
         `SELECT
            id,
            negocio_id,
@@ -82,23 +75,21 @@ export class MySqlBusinessServiceRepository
            fecha_creacion,
            fecha_actualizacion
          FROM negocio_servicio
-         WHERE id = ?
-           AND activo = 1
+         WHERE id = $1
+           AND activo = true
          LIMIT 1`,
         [serviceId]
       );
 
     const row = rows[0];
 
-    return row
-      ? this.mapToDomain(row)
-      : null;
+    return row ? this.mapToDomain(row) : null;
   }
 
   async create(
     data: CreateBusinessServiceData
   ): Promise<BusinessService> {
-    await this.databasePool.execute(
+    await this.databasePool.query(
       `INSERT INTO negocio_servicio (
          id,
          negocio_id,
@@ -106,7 +97,7 @@ export class MySqlBusinessServiceRepository
          descripcion,
          precio_adicional
        )
-       VALUES (?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5)`,
       [
         data.id,
         data.businessId,
@@ -116,13 +107,10 @@ export class MySqlBusinessServiceRepository
       ]
     );
 
-    const created =
-      await this.findById(data.id);
+    const created = await this.findById(data.id);
 
     if (!created) {
-      throw new Error(
-        "No se pudo recuperar el servicio creado"
-      );
+      throw new Error("No se pudo recuperar el servicio creado");
     }
 
     return created;
@@ -132,21 +120,22 @@ export class MySqlBusinessServiceRepository
     serviceId: string,
     data: UpdateBusinessServiceData
   ): Promise<BusinessService | null> {
+    let p = 0;
     const fields: string[] = [];
     const values: SqlValue[] = [];
 
     if (data.name !== undefined) {
-      fields.push("nombre = ?");
+      fields.push(`nombre = $${++p}`);
       values.push(data.name);
     }
 
     if (data.description !== undefined) {
-      fields.push("descripcion = ?");
+      fields.push(`descripcion = $${++p}`);
       values.push(data.description);
     }
 
     if (data.additionalPrice !== undefined) {
-      fields.push("precio_adicional = ?");
+      fields.push(`precio_adicional = $${++p}`);
       values.push(data.additionalPrice);
     }
 
@@ -156,11 +145,11 @@ export class MySqlBusinessServiceRepository
 
     values.push(serviceId);
 
-    await this.databasePool.execute<ResultSetHeader>(
+    await this.databasePool.query(
       `UPDATE negocio_servicio
        SET ${fields.join(", ")}
-       WHERE id = ?
-         AND activo = 1`,
+       WHERE id = $${p + 1}
+         AND activo = true`,
       values
     );
 
@@ -170,16 +159,16 @@ export class MySqlBusinessServiceRepository
   async delete(
     serviceId: string
   ): Promise<boolean> {
-    const [result] =
-      await this.databasePool.execute<ResultSetHeader>(
+    const { rowCount } =
+      await this.databasePool.query(
         `UPDATE negocio_servicio
-         SET activo = 0
-         WHERE id = ?
-           AND activo = 1`,
+         SET activo = false
+         WHERE id = $1
+           AND activo = true`,
         [serviceId]
       );
 
-    return result.affectedRows > 0;
+    return (rowCount ?? 0) > 0;
   }
 
   private mapToDomain(

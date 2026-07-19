@@ -1,4 +1,4 @@
-import type { Pool } from 'mysql2/promise';
+﻿import type { Pool } from 'pg';
 import { JwtTokenService } from '../user/infrastructure/security/SecurityAdapters.js';
 import { StripeService } from './StripeService.js';
 import { CreateCheckoutController } from './controller/CreateCheckoutController.js';

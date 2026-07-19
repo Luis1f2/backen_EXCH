@@ -1,7 +1,7 @@
-import { Router } from "express";
+﻿import { Router } from "express";
 
 import type { Pool } from
-  "mysql2/promise";
+  "pg";
 
 import type {
   TokenService

@@ -1,9 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import type {
-  Pool,
-  RowDataPacket
-} from "mysql2/promise";
+import type { Pool } from "pg";
 
 import type { BusinessSchedule } from "../../domain/entities/BusinessSchedule.js";
 import type {
@@ -11,13 +8,13 @@ import type {
   ReplaceBusinessScheduleData
 } from "../../domain/repositories/BusinessScheduleRepository.js";
 
-interface BusinessScheduleRow extends RowDataPacket {
+interface BusinessScheduleRow {
   id: string;
   negocio_id: string;
   dia_semana: number;
   hora_apertura: string | null;
   hora_cierre: string | null;
-  cerrado: number;
+  cerrado: boolean;
 }
 
 export class MySqlBusinessScheduleRepository
@@ -30,19 +27,17 @@ export class MySqlBusinessScheduleRepository
   async listByBusinessId(
     businessId: string
   ): Promise<BusinessSchedule[]> {
-    const [rows] =
-      await this.databasePool.execute<BusinessScheduleRow[]>(
+    const { rows } =
+      await this.databasePool.query<BusinessScheduleRow>(
         `SELECT
            id,
            negocio_id,
            dia_semana,
-           TIME_FORMAT(hora_apertura, '%H:%i:%s')
-             AS hora_apertura,
-           TIME_FORMAT(hora_cierre, '%H:%i:%s')
-             AS hora_cierre,
+           TO_CHAR(hora_apertura, 'HH24:MI:SS') AS hora_apertura,
+           TO_CHAR(hora_cierre, 'HH24:MI:SS') AS hora_cierre,
            cerrado
          FROM negocio_horario
-         WHERE negocio_id = ?
+         WHERE negocio_id = $1
          ORDER BY dia_semana ASC`,
         [businessId]
       );
@@ -54,28 +49,21 @@ export class MySqlBusinessScheduleRepository
     businessId: string,
     schedules: ReplaceBusinessScheduleData[]
   ): Promise<BusinessSchedule[]> {
-    const connection =
-      await this.databasePool.getConnection();
+    const client = await this.databasePool.connect();
 
     try {
-      await connection.beginTransaction();
+      await client.query("BEGIN");
 
-      await connection.execute(
-        `DELETE FROM negocio_horario
-         WHERE negocio_id = ?`,
+      await client.query(
+        `DELETE FROM negocio_horario WHERE negocio_id = $1`,
         [businessId]
       );
 
       for (const schedule of schedules) {
-        const openingTime = schedule.closed
-          ? null
-          : schedule.openingTime;
+        const openingTime = schedule.closed ? null : schedule.openingTime;
+        const closingTime = schedule.closed ? null : schedule.closingTime;
 
-        const closingTime = schedule.closed
-          ? null
-          : schedule.closingTime;
-
-        await connection.execute(
+        await client.query(
           `INSERT INTO negocio_horario (
              id,
              negocio_id,
@@ -84,24 +72,24 @@ export class MySqlBusinessScheduleRepository
              hora_cierre,
              cerrado
            )
-           VALUES (?, ?, ?, ?, ?, ?)`,
+           VALUES ($1, $2, $3, $4, $5, $6)`,
           [
             randomUUID(),
             businessId,
             schedule.dayOfWeek,
             openingTime,
             closingTime,
-            schedule.closed ? 1 : 0
+            schedule.closed
           ]
         );
       }
 
-      await connection.commit();
+      await client.query("COMMIT");
     } catch (error) {
-      await connection.rollback();
+      await client.query("ROLLBACK");
       throw error;
     } finally {
-      connection.release();
+      client.release();
     }
 
     return this.listByBusinessId(businessId);

@@ -1,8 +1,4 @@
-import type {
-  Pool,
-  ResultSetHeader,
-  RowDataPacket
-} from "mysql2/promise";
+import type { Pool } from "pg";
 
 import type { Destination } from "../../domain/entities/Destination.js";
 
@@ -13,25 +9,25 @@ import type {
   UpdateDestinationData
 } from "../../domain/repositories/DestinationRepository.js";
 
-interface DestinationRow extends RowDataPacket {
+interface DestinationRow {
   id: string;
   nombre: string;
   descripcion: string | null;
   categoria_id: string;
   ubicacion_id: string;
-  activo: number;
+  activo: boolean;
   fecha_creacion: Date;
   calificacion_promedio: string;
   total_resenas: number;
-  es_destino_saturado: number;
+  es_destino_saturado: boolean;
 }
 
-interface CatalogRow extends RowDataPacket {
+interface CatalogRow {
   id: string;
 }
 
-interface ExistsRow extends RowDataPacket {
-  total: number;
+interface ExistsRow {
+  total: string;
 }
 
 type SqlValue = string | number | boolean | Date | Buffer | null;
@@ -41,14 +37,14 @@ export class MySqlDestinationRepository
   constructor(private readonly databasePool: Pool) {}
 
   async create(data: CreateDestinationData): Promise<Destination> {
-    await this.databasePool.execute(
+    await this.databasePool.query(
       `INSERT INTO destino (
         id,
         nombre,
         descripcion,
         categoria_id,
         ubicacion_id
-      ) VALUES (?, ?, ?, ?, ?)`,
+      ) VALUES ($1, $2, $3, $4, $5)`,
       [
         data.id,
         data.name,
@@ -58,10 +54,8 @@ export class MySqlDestinationRepository
       ]
     );
 
-    await this.databasePool.execute(
-      `INSERT INTO destino_metrica (
-        destino_id
-      ) VALUES (?)`,
+    await this.databasePool.query(
+      `INSERT INTO destino_metrica (destino_id) VALUES ($1)`,
       [data.id]
     );
 
@@ -75,7 +69,7 @@ export class MySqlDestinationRepository
   }
 
   async findById(id: string): Promise<Destination | null> {
-    const [rows] = await this.databasePool.execute<DestinationRow[]>(
+    const { rows } = await this.databasePool.query<DestinationRow>(
       `SELECT
         d.id,
         d.nombre,
@@ -86,11 +80,11 @@ export class MySqlDestinationRepository
         d.fecha_creacion,
         COALESCE(dm.calificacion_promedio, 0.00) AS calificacion_promedio,
         COALESCE(dm.total_resenas, 0) AS total_resenas,
-        COALESCE(dm.es_destino_saturado, 0) AS es_destino_saturado
+        COALESCE(dm.es_destino_saturado, false) AS es_destino_saturado
        FROM destino d
        LEFT JOIN destino_metrica dm ON dm.destino_id = d.id
-       WHERE d.id = ?
-       AND d.activo = 1
+       WHERE d.id = $1
+       AND d.activo = true
        LIMIT 1`,
       [id]
     );
@@ -103,33 +97,34 @@ export class MySqlDestinationRepository
   async list(
     filters: ListDestinationsFilters
   ): Promise<Destination[]> {
-    const conditions: string[] = ["d.activo = 1"];
+    let p = 0;
+    const conditions: string[] = ["d.activo = true"];
     const values: SqlValue[] = [];
 
     if (filters.categoryId) {
-      conditions.push("d.categoria_id = ?");
+      conditions.push(`d.categoria_id = $${++p}`);
       values.push(filters.categoryId);
     }
 
     if (filters.locationId) {
-      conditions.push("d.ubicacion_id = ?");
+      conditions.push(`d.ubicacion_id = $${++p}`);
       values.push(filters.locationId);
     }
 
     if (filters.municipality) {
-      conditions.push("u.municipio = ?");
+      conditions.push(`u.municipio = $${++p}`);
       values.push(filters.municipality);
     }
 
     if (filters.state) {
-      conditions.push("u.estado = ?");
+      conditions.push(`u.estado = $${++p}`);
       values.push(filters.state);
     }
 
     values.push(filters.limit);
     values.push(filters.offset);
 
-    const [rows] = await this.databasePool.execute<DestinationRow[]>(
+    const { rows } = await this.databasePool.query<DestinationRow>(
       `SELECT
         d.id,
         d.nombre,
@@ -140,14 +135,14 @@ export class MySqlDestinationRepository
         d.fecha_creacion,
         COALESCE(dm.calificacion_promedio, 0.00) AS calificacion_promedio,
         COALESCE(dm.total_resenas, 0) AS total_resenas,
-        COALESCE(dm.es_destino_saturado, 0) AS es_destino_saturado
+        COALESCE(dm.es_destino_saturado, false) AS es_destino_saturado
        FROM destino d
        INNER JOIN ubicacion u ON u.id = d.ubicacion_id
        LEFT JOIN destino_metrica dm ON dm.destino_id = d.id
        WHERE ${conditions.join(" AND ")}
        ORDER BY d.fecha_creacion DESC
-       LIMIT ?
-       OFFSET ?`,
+       LIMIT $${p + 1}
+       OFFSET $${p + 2}`,
       values
     );
 
@@ -158,26 +153,27 @@ export class MySqlDestinationRepository
     id: string,
     data: UpdateDestinationData
   ): Promise<Destination | null> {
+    let p = 0;
     const fields: string[] = [];
     const values: SqlValue[] = [];
 
     if (data.name !== undefined) {
-      fields.push("nombre = ?");
+      fields.push(`nombre = $${++p}`);
       values.push(data.name);
     }
 
     if (data.description !== undefined) {
-      fields.push("descripcion = ?");
+      fields.push(`descripcion = $${++p}`);
       values.push(data.description);
     }
 
     if (data.categoryId !== undefined) {
-      fields.push("categoria_id = ?");
+      fields.push(`categoria_id = $${++p}`);
       values.push(data.categoryId);
     }
 
     if (data.locationId !== undefined) {
-      fields.push("ubicacion_id = ?");
+      fields.push(`ubicacion_id = $${++p}`);
       values.push(data.locationId);
     }
 
@@ -187,11 +183,11 @@ export class MySqlDestinationRepository
 
     values.push(id);
 
-    await this.databasePool.execute(
+    await this.databasePool.query(
       `UPDATE destino
        SET ${fields.join(", ")}
-       WHERE id = ?
-       AND activo = 1`,
+       WHERE id = $${p + 1}
+       AND activo = true`,
       values
     );
 
@@ -199,23 +195,22 @@ export class MySqlDestinationRepository
   }
 
   async delete(id: string): Promise<boolean> {
-    const [result] =
-      await this.databasePool.execute<ResultSetHeader>(
-        `UPDATE destino
-         SET activo = 0
-         WHERE id = ?
-         AND activo = 1`,
-        [id]
-      );
+    const { rowCount } = await this.databasePool.query(
+      `UPDATE destino
+       SET activo = false
+       WHERE id = $1
+       AND activo = true`,
+      [id]
+    );
 
-    return result.affectedRows > 0;
+    return (rowCount ?? 0) > 0;
   }
 
   async findCategoryIdByName(name: string): Promise<string | null> {
-    const [rows] = await this.databasePool.execute<CatalogRow[]>(
+    const { rows } = await this.databasePool.query<CatalogRow>(
       `SELECT id
        FROM categoria
-       WHERE nombre = ?
+       WHERE nombre = $1
        LIMIT 1`,
       [name]
     );
@@ -224,10 +219,10 @@ export class MySqlDestinationRepository
   }
 
   async locationExists(id: string): Promise<boolean> {
-    const [rows] = await this.databasePool.execute<ExistsRow[]>(
+    const { rows } = await this.databasePool.query<ExistsRow>(
       `SELECT COUNT(*) AS total
        FROM ubicacion
-       WHERE id = ?`,
+       WHERE id = $1`,
       [id]
     );
 

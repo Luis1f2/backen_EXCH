@@ -1,11 +1,11 @@
 import type { NextFunction, Request, Response } from "express";
-import type { Pool, RowDataPacket } from "mysql2/promise";
+import type { Pool } from "pg";
 
 import type { TokenService } from "../../user/application/ports/SecurityPorts.js";
 import { AppError } from "../../user/application/errors/AppError.js";
 import type { AuthenticatedRequest } from "./AuthenticatedRequest.js";
 
-interface TipoRow extends RowDataPacket {
+interface TipoRow {
   nombre: string;
 }
 
@@ -26,11 +26,11 @@ export function createAdminMiddleware(
       try {
         const userId = (request as AuthenticatedRequest).userId;
 
-        const [rows] = await pool.execute<TipoRow[]>(
+        const { rows } = await pool.query<TipoRow>(
           `SELECT tu.nombre
            FROM usuario u
            JOIN tipo_usuario tu ON tu.id = u.tipo_usuario_id
-           WHERE u.id = ? AND u.activo = 1
+           WHERE u.id = $1 AND u.activo = true
            LIMIT 1`,
           [userId]
         );
