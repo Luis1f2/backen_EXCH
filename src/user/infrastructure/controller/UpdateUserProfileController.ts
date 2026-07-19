@@ -8,7 +8,8 @@ const updateSchema = z.object({
   name: z.string().trim().min(3).max(100).optional(),
   email: z.string().trim().email().max(150).optional(),
   phone: z.string().trim().max(20).nullable().optional(),
-  password: z.string().min(8).max(72).optional()
+  password: z.string().min(8).max(72).optional(),
+  imgUrl: z.string().url().nullable().optional(),
 });
 
 export class UpdateUserProfileController {
