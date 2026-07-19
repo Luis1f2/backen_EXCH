@@ -27,18 +27,18 @@ export class CreateBusinessService {
     input: CreateBusinessServiceInput
   ) {
     const hasPermission =
-      await this.businessRepository
-        .isUserBusinessAdministrator(
-          userId,
-          businessId
-        );
+    await this.businessRepository
+      .isUserBusinessOwner(
+      userId,
+      businessId
+    );
 
-    if (!hasPermission) {
-      throw new AppError(
-        "El negocio debe estar aprobado y debes ser su administrador",
-        403
-      );
-    }
+   if (!hasPermission) {
+    throw new AppError(
+    "No tienes permisos para agregar servicios a este negocio",
+    403
+  );
+}
 
     return this.serviceRepository.create({
       id: randomUUID(),
