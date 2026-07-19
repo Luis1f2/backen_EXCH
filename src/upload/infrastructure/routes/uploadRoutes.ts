@@ -157,6 +157,13 @@ export function createUploadRoutes(
     controllers.deleteEvent.execute
   );
 
+router.post(
+  "/usuarios/perfil",
+  authenticate,
+  uploadUsuario.single("imagen"),
+  controllers.userProfile.execute
+);
+
 router.delete(
   "/usuarios/perfil",
   authenticate,

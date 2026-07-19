@@ -11,7 +11,7 @@ async function bootstrap(): Promise<void> {
     const server = httpApp.listen(port, () => {
       console.log(`API ejecutándose en http://localhost:${port}/v1`);
       console.log(`Health: http://localhost:${port}/v1/api/health`);
-      console.log("MariaDB conectada correctamente");
+      console.log("PostgreSQL/Supabase conectada correctamente");
     });
 
     const shutdown = (): void => {
