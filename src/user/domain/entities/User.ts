@@ -10,8 +10,8 @@ export interface User {
   name: string;
   email: string;
   phone: string | null;
-  passwordHash: string;
   imgUrl: string | null;
+  passwordHash: string;
   userTypeId: string;
   userType: UserType;
   registeredAt: Date;

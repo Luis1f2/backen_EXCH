@@ -12,8 +12,15 @@ import { ValidateBusiness } from "../application/usecase/ValidateBusiness.js";
 import { GetBusinessSchedules } from "../application/usecase/GetBusinessSchedules.js";
 import { ReplaceBusinessSchedules } from "../application/usecase/ReplaceBusinessSchedules.js";
 
+import { ListBusinessServices } from "../application/usecase/ListBusinessServices.js";
+import { CreateBusinessService } from "../application/usecase/CreateBusinessService.js";
+import { UpdateBusinessService } from "../application/usecase/UpdateBusinessService.js";
+import { DeleteBusinessService } from "../application/usecase/DeleteBusinessServices.js";
+
 import { MySqlBusinessRepository } from "./mysql/MySqlBusinessRepository.js";
 import { MySqlBusinessScheduleRepository } from "./mysql/MySqlBusinessScheduleRepository.js";
+import { MySqlBusinessServiceRepository } from "./mysql/MySqlBusinessServiceRepository.js";
+import { ListBusinessRequests } from "../application/usecase/ListBusinessRequests.js";
 
 import { CreateBusinessController } from "./controller/CreateBusinessController.js";
 import { GetBusinessController } from "./controller/GetBusinessController.js";
@@ -24,6 +31,12 @@ import { DeleteBusinessController } from "./controller/DeleteBusinessController.
 import { ValidateBusinessController } from "./controller/ValidateBusinessController.js";
 import { GetBusinessSchedulesController } from "./controller/GetBusinessSchedulesController.js";
 import { ReplaceBusinessSchedulesController } from "./controller/ReplaceBusinessSchedulesController.js";
+import { ListBusinessRequestsController } from "./controller/ListBusinessRequestsController.js";
+
+import { ListBusinessServicesController } from "./controller/ListBusinessServicesController.js";
+import { CreateBusinessServiceController } from "./controller/CreateBusinessServiceController.js";
+import { UpdateBusinessServiceController } from "./controller/UpdateBusinessServiceController.js";
+import { DeleteBusinessServiceController } from "./controller/DeleteBusinessServiceController.js";
 
 import { createBusinessRoutes } from "./routes/businessRoutes.js";
 
@@ -37,6 +50,9 @@ export function createBusinessModule(
   const scheduleRepository =
     new MySqlBusinessScheduleRepository(pool);
 
+  const serviceRepository =
+    new MySqlBusinessServiceRepository(pool);
+
   const tokenService =
     new JwtTokenService(jwtSecret);
 
@@ -45,10 +61,12 @@ export function createBusinessModule(
       new CreateBusiness(repository)
     ),
 
-    get: new GetBusinessController(
-      new GetBusiness(repository)
+   get: new GetBusinessController(
+  new GetBusiness(
+    repository,
+    scheduleRepository
+      )
     ),
-
     list: new ListBusinessesController(
       new ListBusinesses(repository)
     ),
@@ -65,9 +83,15 @@ export function createBusinessModule(
       new DeleteBusiness(repository)
     ),
 
-    validate: new ValidateBusinessController(
-      new ValidateBusiness(pool)
-    ),
+    validate:
+  new ValidateBusinessController(
+    new ValidateBusiness(pool),
+  ),
+
+listRequests:
+  new ListBusinessRequestsController(
+    new ListBusinessRequests(pool),
+  ),
 
     getSchedules:
       new GetBusinessSchedulesController(
@@ -81,6 +105,38 @@ export function createBusinessModule(
       new ReplaceBusinessSchedulesController(
         new ReplaceBusinessSchedules(
           scheduleRepository,
+          repository
+        )
+      ),
+
+    listServices:
+      new ListBusinessServicesController(
+        new ListBusinessServices(
+          serviceRepository,
+          repository
+        )
+      ),
+
+    createService:
+      new CreateBusinessServiceController(
+        new CreateBusinessService(
+          serviceRepository,
+          repository
+        )
+      ),
+
+    updateService:
+      new UpdateBusinessServiceController(
+        new UpdateBusinessService(
+          serviceRepository,
+          repository
+        )
+      ),
+
+    deleteService:
+      new DeleteBusinessServiceController(
+        new DeleteBusinessService(
+          serviceRepository,
           repository
         )
       )

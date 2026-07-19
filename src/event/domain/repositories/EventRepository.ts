@@ -4,6 +4,7 @@ export interface CreateEventData {
   id: string;
   titulo: string;
   descripcion?: string | null;
+  imagenUrl?: string | null;
   fechaInicio: Date;
   fechaFin?: Date | null;
   ubicacionId?: string | null;
@@ -14,14 +15,21 @@ export interface CreateEventData {
 export interface UpdateEventData {
   titulo?: string;
   descripcion?: string | null;
+  imagenUrl?: string | null;
   fechaInicio?: Date;
   fechaFin?: Date | null;
   ubicacionId?: string | null;
   categoriaId?: string | null;
 }
 
+export interface ListEventsFilter {
+  proximasOnly?: boolean;
+  categoriaId?: string;
+}
+
 export interface EventRepository {
-  list(proximasOnly?: boolean): Promise<Event[]>;
+  list(filters?: ListEventsFilter): Promise<Event[]>;
+  categoryCanBeUsedForEvents(categoryId: string): Promise<boolean>;
   findById(id: string): Promise<Event | null>;
   create(data: CreateEventData): Promise<Event>;
   update(id: string, data: UpdateEventData): Promise<Event | null>;

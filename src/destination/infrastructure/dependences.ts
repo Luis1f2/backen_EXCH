@@ -43,5 +43,5 @@ export function createDestinationModule(
     )
   };
 
-  return createDestinationRoutes(controllers, tokenService);
+  return createDestinationRoutes(controllers,pool ,tokenService);
 }

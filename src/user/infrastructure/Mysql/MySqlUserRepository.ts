@@ -9,7 +9,6 @@ import type {
   UserType,
 } from "../../domain/entities/User.js";
 
-
 import type {
   CreateUserData,
   UpdateUserData,
@@ -24,7 +23,7 @@ interface UserRow extends RowDataPacket {
   tipo_usuario_id: string;
   tipo_usuario_nombre: UserType;
   telefono: string | null;
-  img_url: string | null;
+  imagen_perfil_url: string | null;
   fecha_registro: Date;
   es_premium: number;
   activo: number;
@@ -69,37 +68,25 @@ export class MySqlUserRepository implements UserRepository {
   }
 
   async findById(id: string): Promise<User | null> {
-  return this.findOne("u.id = ?", [id], {
-    soloActivos: true,
-  });
-}
+    return this.findOne("u.id = ?", [id], { soloActivos: true });
+  }
 
   // El correo es unico para siempre en la tabla (uq_usuario_email no distingue
-  // activo), asi que la busqueda debe ver tambien cuentas borradas: si no, el
-  // registro/actualizacion fallaria con el error generico de MySQL en vez de
-  // un mensaje claro de "correo ya registrado".
-async findByEmail(email: string): Promise<User | null> {
-  return this.findOne("u.email = ?", [email], {
-    soloActivos: false,
-  });
-}
+  // activo), asi que la busqueda debe ver tambien cuentas borradas.
+  async findByEmail(email: string): Promise<User | null> {
+    return this.findOne("u.email = ?", [email], { soloActivos: false });
+  }
 
   async findUserTypeIdByName(name: string): Promise<string | null> {
     const [rows] = await this.databasePool.execute<UserTypeRow[]>(
-      `SELECT id
-       FROM tipo_usuario
-       WHERE nombre = ?
-       LIMIT 1`,
+      `SELECT id FROM tipo_usuario WHERE nombre = ? LIMIT 1`,
       [name]
     );
 
     return rows[0]?.id ?? null;
   }
 
-  async update(
-    id: string,
-    data: UpdateUserData
-  ): Promise<User | null> {
+  async update(id: string, data: UpdateUserData): Promise<User | null> {
     const fields: string[] = [];
     const values: SqlValue[] = [];
 
@@ -124,7 +111,7 @@ async findByEmail(email: string): Promise<User | null> {
     }
 
     if (data.imgUrl !== undefined) {
-      fields.push("img_url = ?");
+      fields.push("imagen_perfil_url = ?");
       values.push(data.imgUrl);
     }
 
@@ -135,10 +122,7 @@ async findByEmail(email: string): Promise<User | null> {
     values.push(id);
 
     await this.databasePool.execute(
-      `UPDATE usuario
-       SET ${fields.join(", ")}
-       WHERE id = ?
-       AND activo = 1`,
+      `UPDATE usuario SET ${fields.join(", ")} WHERE id = ? AND activo = 1`,
       values
     );
 
@@ -146,69 +130,61 @@ async findByEmail(email: string): Promise<User | null> {
   }
 
   async delete(id: string): Promise<boolean> {
-    const [result] =
-      await this.databasePool.execute<ResultSetHeader>(
-        `UPDATE usuario
-         SET activo = 0
-         WHERE id = ?
-         AND activo = 1`,
-        [id]
-      );
+    const [result] = await this.databasePool.execute<ResultSetHeader>(
+      `UPDATE usuario SET activo = 0 WHERE id = ? AND activo = 1`,
+      [id]
+    );
 
     return result.affectedRows > 0;
   }
 
-private async findOne(
-  condition: string,
-  values: SqlValue[],
-  options: { soloActivos: boolean }
-): Promise<User | null> {
-  const filtroActivo = options.soloActivos
-    ? "AND u.activo = 1"
-    : "";
+  private async findOne(
+    condition: string,
+    values: SqlValue[],
+    options: { soloActivos: boolean }
+  ): Promise<User | null> {
+    const filtroActivo = options.soloActivos ? "AND u.activo = 1" : "";
 
-  const [rows] = await this.databasePool.execute<UserRow[]>(
-    `
-      SELECT
-        u.id,
-        u.nombre,
-        u.email,
-        u.password_hash,
-        u.tipo_usuario_id,
-        tu.nombre AS tipo_usuario_nombre,
-        u.telefono,
-        u.img_url,
-        u.fecha_registro,
-        u.es_premium,
-        u.activo
-      FROM usuario u
-      INNER JOIN tipo_usuario tu
-        ON tu.id = u.tipo_usuario_id
-      WHERE ${condition}
-        ${filtroActivo}
-      LIMIT 1
-    `,
-    values
-  );
+    const [rows] = await this.databasePool.execute<UserRow[]>(
+      `
+        SELECT
+          u.id,
+          u.nombre,
+          u.email,
+          u.password_hash,
+          u.tipo_usuario_id,
+          tu.nombre AS tipo_usuario_nombre,
+          u.telefono,
+          u.imagen_perfil_url,
+          u.fecha_registro,
+          u.es_premium,
+          u.activo
+        FROM usuario u
+        INNER JOIN tipo_usuario tu ON tu.id = u.tipo_usuario_id
+        WHERE ${condition}
+          ${filtroActivo}
+        LIMIT 1
+      `,
+      values
+    );
 
-  const row = rows[0];
+    const row = rows[0];
+    return row ? this.mapToDomain(row) : null;
+  }
 
-  return row ? this.mapToDomain(row) : null;
-}
-private mapToDomain(row: UserRow): User {
-  return {
-    id: row.id,
-    name: row.nombre,
-    email: row.email,
-    phone: row.telefono,
-    imgUrl: row.img_url,
-    passwordHash: row.password_hash,
-    userTypeId: row.tipo_usuario_id,
-    userType: row.tipo_usuario_nombre,
-    registeredAt: row.fecha_registro,
-    isPremium: Boolean(row.es_premium),
-    active: Boolean(row.activo),
-  };
-}
-
+  private mapToDomain(row: UserRow): User {
+    return {
+      id: row.id,
+      name: row.nombre,
+      email: row.email,
+      phone: row.telefono,
+      imgUrl: row.imagen_perfil_url,
+      passwordHash: row.password_hash,
+      userTypeId: row.tipo_usuario_id,
+      userType: row.tipo_usuario_nombre,
+      registeredAt: row.fecha_registro,
+      isPremium: Boolean(row.es_premium),
+      active: Boolean(row.activo),
+    };
+  }
 }

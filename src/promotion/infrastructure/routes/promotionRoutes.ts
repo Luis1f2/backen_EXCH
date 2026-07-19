@@ -1,8 +1,9 @@
 import { Router } from "express";
 
+import type { Pool } from "mysql2/promise";
 import type { TokenService } from "../../../user/application/ports/SecurityPorts.js";
 
-import { createAuthenticateMiddleware } from "../../../http/middlewares/createAuthenticateMiddleware.js";
+import { createRoleMiddleware } from "../../../http/middlewares/createRoleMiddleware.js";
 
 import type { ListPromotionsController } from "../controller/ListPromotionsController.js";
 import type { CreatePromotionController } from "../controller/CreatePromotionController.js";
@@ -18,16 +19,39 @@ interface PromotionControllers {
 
 export function createPromotionRoutes(
   controllers: PromotionControllers,
-  tokenService: TokenService
+  tokenService: TokenService,
+  pool: Pool,
 ): Router {
   const router = Router();
-  const authenticate = createAuthenticateMiddleware(tokenService);
 
-  router.get("/", controllers.list.execute);
+  const businessAdminOnly = createRoleMiddleware(
+    pool,
+    tokenService,
+    ["admin_negocio"],
+  );
 
-  router.post("/",      authenticate, controllers.create.execute);
-  router.patch("/:id",  authenticate, controllers.update.execute);
-  router.delete("/:id", authenticate, controllers.delete.execute);
+  router.get(
+    "/",
+    controllers.list.execute,
+  );
+
+  router.post(
+    "/",
+    businessAdminOnly,
+    controllers.create.execute,
+  );
+
+  router.patch(
+    "/:id",
+    businessAdminOnly,
+    controllers.update.execute,
+  );
+
+  router.delete(
+    "/:id",
+    businessAdminOnly,
+    controllers.delete.execute,
+  );
 
   return router;
 }
