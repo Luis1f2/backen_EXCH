@@ -24,6 +24,7 @@ interface UserRow extends RowDataPacket {
   tipo_usuario_id: string;
   tipo_usuario_nombre: UserType;
   telefono: string | null;
+  img_url: string | null;
   fecha_registro: Date;
   es_premium: number;
   activo: number;
@@ -122,6 +123,11 @@ async findByEmail(email: string): Promise<User | null> {
       values.push(data.passwordHash);
     }
 
+    if (data.imgUrl !== undefined) {
+      fields.push("img_url = ?");
+      values.push(data.imgUrl);
+    }
+
     if (fields.length === 0) {
       return this.findById(id);
     }
@@ -171,6 +177,7 @@ private async findOne(
         u.tipo_usuario_id,
         tu.nombre AS tipo_usuario_nombre,
         u.telefono,
+        u.img_url,
         u.fecha_registro,
         u.es_premium,
         u.activo
@@ -194,6 +201,7 @@ private mapToDomain(row: UserRow): User {
     name: row.nombre,
     email: row.email,
     phone: row.telefono,
+    imgUrl: row.img_url,
     passwordHash: row.password_hash,
     userTypeId: row.tipo_usuario_id,
     userType: row.tipo_usuario_nombre,

@@ -11,6 +11,7 @@ export interface User {
   email: string;
   phone: string | null;
   passwordHash: string;
+  imgUrl: string | null;
   userTypeId: string;
   userType: UserType;
   registeredAt: Date;

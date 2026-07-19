@@ -16,6 +16,7 @@ export interface UpdateUserProfileInput {
   email?: string;
   phone?: string | null;
   password?: string;
+  imgUrl?: string | null;
 }
 
 export class UpdateUserProfile {
@@ -59,6 +60,10 @@ export class UpdateUserProfile {
     if (input.password !== undefined) {
       updateData.passwordHash =
         await this.passwordHasher.hash(input.password);
+    }
+
+    if (input.imgUrl !== undefined) {
+      updateData.imgUrl = input.imgUrl;
     }
 
     const updatedUser = await this.repository.update(userId, updateData);

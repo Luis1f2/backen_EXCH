@@ -14,6 +14,7 @@ export interface UpdateUserData {
   email?: string;
   phone?: string | null;
   passwordHash?: string;
+  imgUrl?: string | null;
 }
 
 export interface UserRepository {
