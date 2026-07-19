@@ -2,13 +2,7 @@ import { Pool } from "pg";
 
 function requiredEnv(name: string): string {
   const value = process.env[name];
-
-  if (!value) {
-    throw new Error(
-      `Falta la variable de entorno ${name}`
-    );
-  }
-
+  if (!value) throw new Error(`Falta la variable de entorno ${name}`);
   return value;
 }
 
@@ -21,7 +15,17 @@ function useSslConnection(): boolean {
 }
 
 export function createDatabasePool(): Pool {
-  const useSsl = useSslConnection();
+  const databaseUrl = process.env.DATABASE_URL;
+
+  if (databaseUrl) {
+    return new Pool({
+      connectionString: databaseUrl,
+      ssl: { rejectUnauthorized: false },
+      max: 10,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 10000,
+    });
+  }
 
   return new Pool({
     host: requiredEnv("DB_HOST"),
@@ -32,7 +36,7 @@ export function createDatabasePool(): Pool {
     password: requiredEnv("DB_PASSWORD"),
     database: requiredEnv("DB_NAME"),
 
-    ssl: useSsl
+    ssl: useSslConnection()
       ? {
           rejectUnauthorized: false,
         }
@@ -40,7 +44,7 @@ export function createDatabasePool(): Pool {
 
     max: 10,
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 5000,
+    connectionTimeoutMillis: 10000,
   });
 }
 
