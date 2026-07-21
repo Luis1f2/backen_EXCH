@@ -9,14 +9,14 @@ import { z } from "zod";
 import type { ListBusinessRequests } from "../../application/usecase/ListBusinessRequests.js";
 
 const querySchema = z.object({
-  status: z
-    .enum([
-      "pendiente",
-      "aprobada",
-      "rechazada",
-      "todas",
-    ])
-    .default("todas"),
+ status: z
+  .enum([
+    "pendiente",
+    "aprobado",
+    "rechazado",
+    "todas",
+  ])
+  .default("todas"),
 
   limit: z.coerce
     .number()

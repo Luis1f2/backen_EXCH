@@ -23,7 +23,7 @@ export class DeleteBusinessImage {
        WHERE n.id = $1
          AND na.usuario_id = $2
          AND na.activo = true
-         AND na.estado_solicitud = 'aprobada'
+         AND na.estado_solicitud = 'aprobado'
          AND n.activo = true
          AND n.esta_verificado = true
        LIMIT 1`,
