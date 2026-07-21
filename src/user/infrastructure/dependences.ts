@@ -1,12 +1,13 @@
-﻿import type { Pool } from "pg";
+import type { Pool } from "pg";
 
 import { RegisterUser } from "../application/usecase/RegisterUser.js";
 import { LoginUser } from "../application/usecase/LoginUser.js";
+import { GoogleAuthUser } from "../application/usecase/GoogleAuthUser.js";
 import { GetUserProfile } from "../application/usecase/GetUserProfile.js";
 import { UpdateUserProfile } from "../application/usecase/UpdateUserProfile.js";
 import { DeleteUserProfile } from "../application/usecase/DeleteUserProfile.js";
-import {GetUserInterests} from "../application/usecase/GetUserInterests.js";
-import {UpdateUserInterests} from "../application/usecase/UpdateUserInterests.js";
+import { GetUserInterests } from "../application/usecase/GetUserInterests.js";
+import { UpdateUserInterests } from "../application/usecase/UpdateUserInterests.js";
 
 import { MySqlUserRepository } from "./Mysql/MySqlUserRepository.js";
 
@@ -17,11 +18,12 @@ import {
 
 import { RegisterUserController } from "./controller/RegisterUserController.js";
 import { LoginUserController } from "./controller/LoginUserController.js";
+import { GoogleAuthController } from "./controller/GoogleAuthController.js";
 import { GetUserProfileController } from "./controller/GetUserProfileController.js";
 import { UpdateUserProfileController } from "./controller/UpdateUserProfileController.js";
 import { DeleteUserProfileController } from "./controller/DeleteUserProfileController.js";
-import {GetUserInterestsController} from "./controller/GetUserInterestsController.js";
-import {UpdateUserInterestsController} from "./controller/UpdateUserInterestsController.js";
+import { GetUserInterestsController } from "./controller/GetUserInterestsController.js";
+import { UpdateUserInterestsController } from "./controller/UpdateUserInterestsController.js";
 
 import { createUserRoutes } from "./routes/UserRoutes.js";
 
@@ -32,53 +34,34 @@ export function createUserModule(
   const repository = new MySqlUserRepository(pool);
   const passwordHasher = new BcryptPasswordHasher();
   const tokenService = new JwtTokenService(jwtSecret);
+  const googleClientId = process.env.GOOGLE_CLIENT_ID ?? "";
 
- const controllers = {
-  register:
-    new RegisterUserController(
-      new RegisterUser(
-        repository,
-        passwordHasher
-      )
+  const controllers = {
+    register: new RegisterUserController(
+      new RegisterUser(repository, passwordHasher)
     ),
-
-  login:
-    new LoginUserController(
-      new LoginUser(
-        repository,
-        passwordHasher,
-        tokenService
-      )
+    login: new LoginUserController(
+      new LoginUser(repository, passwordHasher, tokenService)
     ),
-
-  getProfile:
-    new GetUserProfileController(
+    googleAuth: new GoogleAuthController(
+      new GoogleAuthUser(repository, passwordHasher, tokenService, googleClientId)
+    ),
+    getProfile: new GetUserProfileController(
       new GetUserProfile(repository)
     ),
-
-  updateProfile:
-    new UpdateUserProfileController(
-      new UpdateUserProfile(
-        repository,
-        passwordHasher
-      )
+    updateProfile: new UpdateUserProfileController(
+      new UpdateUserProfile(repository, passwordHasher)
     ),
-
-  deleteProfile:
-    new DeleteUserProfileController(
+    deleteProfile: new DeleteUserProfileController(
       new DeleteUserProfile(repository)
     ),
-
- getUserInterests:
-  new GetUserInterestsController(
-    new GetUserInterests(pool)
-  ),
-
-updateUserInterests:
-  new UpdateUserInterestsController(
-    new UpdateUserInterests(pool)
-  ),
-};
+    getUserInterests: new GetUserInterestsController(
+      new GetUserInterests(pool)
+    ),
+    updateUserInterests: new UpdateUserInterestsController(
+      new UpdateUserInterests(pool)
+    ),
+  };
 
   return createUserRoutes(controllers, tokenService);
 }
