@@ -13,6 +13,7 @@ export interface UpdateDestinationData {
   description?: string | null;
   categoryId?: string;
   locationId?: string;
+  imageUrl?: string | null;
 }
 
 export interface ListDestinationsFilters {

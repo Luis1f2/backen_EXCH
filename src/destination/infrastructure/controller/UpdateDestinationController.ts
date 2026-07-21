@@ -11,7 +11,8 @@ const updateDestinationSchema = z.object({
   name: z.string().trim().min(3).max(120).optional(),
   description: z.string().trim().nullable().optional(),
   categoryName: z.string().trim().min(2).max(80).optional(),
-  locationId: z.string().uuid().optional()
+  locationId: z.string().uuid().optional(),
+  imageUrl: z.string().url().nullable().optional(),
 });
 
 export class UpdateDestinationController {

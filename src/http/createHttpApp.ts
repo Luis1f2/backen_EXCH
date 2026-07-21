@@ -25,6 +25,7 @@ import { createAdminModule } from "../admin/infrastructure/dependences.js";
 import { createPromotionModule } from "../promotion/infrastructure/dependences.js";
 import { createUploadModule } from "../upload/infrastructure/dependences.js";
 import { createPaymentModule } from "../payment/dependences.js";
+import { createChatModule } from "../chat/infrastructure/chatDependencies.js";
 import { verifyDatabaseConnection } from "../database/databasePool.js";
 
 export function createHttpApp(
@@ -104,6 +105,7 @@ app.use(
   );
   
   app.use("/v1/api/uploads", createUploadModule(databasePool, jwtSecret));
+  app.use("/v1/api/chat", createChatModule(databasePool, jwtSecret));
 
   const stripeSecretKey = process.env.STRIPE_SECRET_KEY?.trim();
 

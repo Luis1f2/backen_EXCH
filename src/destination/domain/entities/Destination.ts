@@ -9,4 +9,5 @@ export interface Destination {
   averageRating: number;
   totalReviews: number;
   isSaturated: boolean;
+  imageUrl: string | null;
 }
