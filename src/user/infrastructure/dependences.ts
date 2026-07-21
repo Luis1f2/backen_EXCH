@@ -6,6 +6,8 @@ import { GoogleAuthUser } from "../application/usecase/GoogleAuthUser.js";
 import { GetUserProfile } from "../application/usecase/GetUserProfile.js";
 import { UpdateUserProfile } from "../application/usecase/UpdateUserProfile.js";
 import { DeleteUserProfile } from "../application/usecase/DeleteUserProfile.js";
+import { GetUserInterests } from "../application/usecase/GetUserInterests.js";
+import { UpdateUserInterests } from "../application/usecase/UpdateUserInterests.js";
 
 import { MySqlUserRepository } from "./Mysql/MySqlUserRepository.js";
 
@@ -20,6 +22,8 @@ import { GoogleAuthController } from "./controller/GoogleAuthController.js";
 import { GetUserProfileController } from "./controller/GetUserProfileController.js";
 import { UpdateUserProfileController } from "./controller/UpdateUserProfileController.js";
 import { DeleteUserProfileController } from "./controller/DeleteUserProfileController.js";
+import { GetUserInterestsController } from "./controller/GetUserInterestsController.js";
+import { UpdateUserInterestsController } from "./controller/UpdateUserInterestsController.js";
 
 import { createUserRoutes } from "./routes/UserRoutes.js";
 
@@ -50,7 +54,13 @@ export function createUserModule(
     ),
     deleteProfile: new DeleteUserProfileController(
       new DeleteUserProfile(repository)
-    )
+    ),
+    getUserInterests: new GetUserInterestsController(
+      new GetUserInterests(pool)
+    ),
+    updateUserInterests: new UpdateUserInterestsController(
+      new UpdateUserInterests(pool)
+    ),
   };
 
   return createUserRoutes(controllers, tokenService);

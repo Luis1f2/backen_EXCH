@@ -29,17 +29,17 @@ export class ReplaceBusinessSchedules {
     }
 
     const hasPermission =
-      await this.businessRepository.isUserBusinessAdministrator(
-        userId,
-        businessId
-      );
+    await this.businessRepository.isUserBusinessOwner(
+      userId,
+      businessId
+    );
 
     if (!hasPermission) {
-      throw new AppError(
-        "El negocio debe estar aprobado y debes ser su administrador",
-        403
-      );
-    }
+    throw new AppError(
+      "No tienes permisos para modificar los horarios de este negocio",
+      403
+    );
+  }
 
     return this.scheduleRepository.replace(
       businessId,
