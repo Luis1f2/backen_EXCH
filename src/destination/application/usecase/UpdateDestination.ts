@@ -12,6 +12,7 @@ export interface UpdateDestinationInput {
   description?: string | null;
   categoryName?: string;
   locationId?: string;
+  imageUrl?: string | null;
 }
 
 export class UpdateDestination {
@@ -57,6 +58,10 @@ export class UpdateDestination {
       }
 
       updateData.locationId = input.locationId;
+    }
+
+    if (input.imageUrl !== undefined) {
+      updateData.imageUrl = input.imageUrl;
     }
 
     const updatedDestination = await this.repository.update(

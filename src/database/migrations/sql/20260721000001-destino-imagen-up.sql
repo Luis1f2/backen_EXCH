@@ -1,0 +1,2 @@
+ALTER TABLE destino
+  ADD COLUMN imagen_url VARCHAR(255) DEFAULT NULL;

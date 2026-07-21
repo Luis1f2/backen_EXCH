@@ -20,6 +20,7 @@ interface DestinationRow {
   calificacion_promedio: string;
   total_resenas: number;
   es_destino_saturado: boolean;
+  imagen_url: string | null;
 }
 
 interface CatalogRow {
@@ -78,6 +79,7 @@ export class MySqlDestinationRepository
         d.ubicacion_id,
         d.activo,
         d.fecha_creacion,
+        d.imagen_url,
         COALESCE(dm.calificacion_promedio, 0.00) AS calificacion_promedio,
         COALESCE(dm.total_resenas, 0) AS total_resenas,
         COALESCE(dm.es_destino_saturado, false) AS es_destino_saturado
@@ -133,6 +135,7 @@ export class MySqlDestinationRepository
         d.ubicacion_id,
         d.activo,
         d.fecha_creacion,
+        d.imagen_url,
         COALESCE(dm.calificacion_promedio, 0.00) AS calificacion_promedio,
         COALESCE(dm.total_resenas, 0) AS total_resenas,
         COALESCE(dm.es_destino_saturado, false) AS es_destino_saturado
@@ -175,6 +178,11 @@ export class MySqlDestinationRepository
     if (data.locationId !== undefined) {
       fields.push(`ubicacion_id = $${++p}`);
       values.push(data.locationId);
+    }
+
+    if (data.imageUrl !== undefined) {
+      fields.push(`imagen_url = $${++p}`);
+      values.push(data.imageUrl);
     }
 
     if (fields.length === 0) {
@@ -240,7 +248,8 @@ export class MySqlDestinationRepository
       createdAt: row.fecha_creacion,
       averageRating: Number(row.calificacion_promedio),
       totalReviews: row.total_resenas,
-      isSaturated: Boolean(row.es_destino_saturado)
+      isSaturated: Boolean(row.es_destino_saturado),
+      imageUrl: row.imagen_url ?? null,
     };
   }
 }
