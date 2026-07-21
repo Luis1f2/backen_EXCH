@@ -1,7 +1,8 @@
-﻿import type { Pool } from "pg";
+import type { Pool } from "pg";
 
 import { RegisterUser } from "../application/usecase/RegisterUser.js";
 import { LoginUser } from "../application/usecase/LoginUser.js";
+import { GoogleAuthUser } from "../application/usecase/GoogleAuthUser.js";
 import { GetUserProfile } from "../application/usecase/GetUserProfile.js";
 import { UpdateUserProfile } from "../application/usecase/UpdateUserProfile.js";
 import { DeleteUserProfile } from "../application/usecase/DeleteUserProfile.js";
@@ -15,6 +16,7 @@ import {
 
 import { RegisterUserController } from "./controller/RegisterUserController.js";
 import { LoginUserController } from "./controller/LoginUserController.js";
+import { GoogleAuthController } from "./controller/GoogleAuthController.js";
 import { GetUserProfileController } from "./controller/GetUserProfileController.js";
 import { UpdateUserProfileController } from "./controller/UpdateUserProfileController.js";
 import { DeleteUserProfileController } from "./controller/DeleteUserProfileController.js";
@@ -28,20 +30,17 @@ export function createUserModule(
   const repository = new MySqlUserRepository(pool);
   const passwordHasher = new BcryptPasswordHasher();
   const tokenService = new JwtTokenService(jwtSecret);
+  const googleClientId = process.env.GOOGLE_CLIENT_ID ?? "";
 
   const controllers = {
     register: new RegisterUserController(
-      new RegisterUser(
-        repository,
-        passwordHasher
-      )
+      new RegisterUser(repository, passwordHasher)
     ),
     login: new LoginUserController(
-      new LoginUser(
-        repository,
-        passwordHasher,
-        tokenService
-      )
+      new LoginUser(repository, passwordHasher, tokenService)
+    ),
+    googleAuth: new GoogleAuthController(
+      new GoogleAuthUser(repository, passwordHasher, tokenService, googleClientId)
     ),
     getProfile: new GetUserProfileController(
       new GetUserProfile(repository)

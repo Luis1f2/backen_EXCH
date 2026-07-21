@@ -7,12 +7,14 @@ import type { LoginUserController } from "../controller/LoginUserController.js";
 import type { GetUserProfileController } from "../controller/GetUserProfileController.js";
 import type { UpdateUserProfileController } from "../controller/UpdateUserProfileController.js";
 import type { DeleteUserProfileController } from "../controller/DeleteUserProfileController.js";
+import type { GoogleAuthController } from "../controller/GoogleAuthController.js";
 
 import { createAuthenticateMiddleware } from "../../../http/middlewares/createAuthenticateMiddleware.js";
 
 interface UserControllers {
   register: RegisterUserController;
   login: LoginUserController;
+  googleAuth: GoogleAuthController;
   getProfile: GetUserProfileController;
   updateProfile: UpdateUserProfileController;
   deleteProfile: DeleteUserProfileController;
@@ -27,6 +29,7 @@ export function createUserRoutes(
 
   router.post("/register", controllers.register.execute);
   router.post("/login", controllers.login.execute);
+  router.post("/google-auth", controllers.googleAuth.execute);
 
   router.get("/profile", authenticate, controllers.getProfile.execute);
   router.patch("/profile", authenticate, controllers.updateProfile.execute);
