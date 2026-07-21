@@ -24,14 +24,14 @@ export class UpdateBusinessService {
   ) {
     const hasPermission =
       await this.businessRepository
-        .isUserBusinessAdministrator(
+        .isUserBusinessOwner(
           userId,
           businessId
         );
 
     if (!hasPermission) {
       throw new AppError(
-        "El negocio debe estar aprobado y debes ser su administrador",
+        "No tienes permisos para modificar servicios de este negocio",
         403
       );
     }
