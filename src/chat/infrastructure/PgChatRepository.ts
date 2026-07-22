@@ -57,23 +57,67 @@ export class PgChatRepository implements ChatRepository {
   }
 
   async agregarMensaje(
-    conversacionId: string,
-    rol: "user" | "bot",
-    contenido: string,
-  ): Promise<MensajeChat> {
-    const { rows } = await this.pool.query<MensajeRow>(
-      `INSERT INTO mensaje_chat (conversacion_id, rol, contenido)
-       VALUES ($1, $2, $3)
-       RETURNING id, conversacion_id, rol, contenido, creado_en`,
-      [conversacionId, rol, contenido],
+  conversacionId: string,
+  usuarioId: string,
+  rol: "user" | "bot",
+  contenido: string,
+): Promise<MensajeChat | null> {
+  /*
+   * INSERT ... SELECT garantiza que solamente se
+   * inserte el mensaje si la conversación pertenece
+   * al usuario autenticado.
+   *
+   * Evita:
+   * - escribir en conversaciones ajenas;
+   * - depender solamente de conocer un UUID.
+   */
+  const { rows } =
+    await this.pool.query<MensajeRow>(
+      `INSERT INTO mensaje_chat (
+         conversacion_id,
+         rol,
+         contenido
+       )
+       SELECT
+         c.id,
+         $3,
+         $4
+       FROM conversacion c
+       WHERE c.id = $1
+         AND c.usuario_id = $2
+       RETURNING
+         id,
+         conversacion_id,
+         rol,
+         contenido,
+         creado_en`,
+      [
+        conversacionId,
+        usuarioId,
+        rol,
+        contenido,
+      ],
     );
-    // Actualizar timestamp de la conversación para ordenar por actividad
-    await this.pool.query(
-      `UPDATE conversacion SET actualizado_en = NOW() WHERE id = $1`,
-      [conversacionId],
-    );
-    return toMensaje(rows[0]);
+
+  const mensaje = rows[0];
+
+  if (!mensaje) {
+    return null;
   }
+
+  await this.pool.query(
+    `UPDATE conversacion
+     SET actualizado_en = NOW()
+     WHERE id = $1
+       AND usuario_id = $2`,
+    [
+      conversacionId,
+      usuarioId,
+    ],
+  );
+
+  return toMensaje(mensaje);
+}
 
   async eliminarConversacion(id: string, usuarioId: string): Promise<boolean> {
     const { rowCount } = await this.pool.query(

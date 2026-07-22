@@ -6,7 +6,7 @@ import type { AuthenticatedRequest } from "../../../http/middlewares/Authenticat
 
 const createBusinessSchema = z.object({
   name: z.string().trim().min(3).max(120),
-  description: z.string().trim().nullable().optional(),
+  descripcion: z.string().trim().max(5000,"La descripción no puede superar los 5000 caracteres",).nullable().optional(),
   businessTypeName: z.string().trim().min(2).max(80),
   locationId: z.string().uuid(),
   priceFrom: z.number().min(0).nullable().optional()

@@ -10,7 +10,7 @@ const paramsSchema = z.object({
 
 const updateBusinessSchema = z.object({
   name: z.string().trim().min(3).max(120).optional(),
-  description: z.string().trim().nullable().optional(),
+  descripcion: z.string().trim().max(5000,"La descripción no puede superar los 5000 caracteres",).nullable().optional(),
   businessTypeName: z.string().trim().min(2).max(80).optional(),
   locationId: z.string().uuid().optional(),
   priceFrom: z.number().min(0).nullable().optional()

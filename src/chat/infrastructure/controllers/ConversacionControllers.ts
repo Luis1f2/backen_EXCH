@@ -49,17 +49,12 @@ const createConversationSchema =
 
 const addMessageSchema =
   z.object({
-    rol:
-      z.enum([
-        "user",
-        "bot",
-      ]),
-
     contenido:
       z.string()
+        .trim()
         .min(1)
         .max(5000),
-  });
+  }).strict();
 
 export class CrearConversacionController {
   constructor(
@@ -191,44 +186,49 @@ export class AgregarMensajeController {
       AgregarMensaje
   ) {}
 
-  execute = async (
-    request: Request,
-    response: Response,
-    next: NextFunction
-  ): Promise<void> => {
-    try {
-      const {
+ execute = async (
+  request: Request,
+  response: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const userId =
+      (
+        request as
+          AuthenticatedRequest
+      ).userId;
+
+    const {
+      id,
+    } =
+      conversationParamsSchema.parse(
+        request.params,
+      );
+
+    const {
+      contenido,
+    } =
+      addMessageSchema.parse(
+        request.body,
+      );
+
+    const message =
+      await this.uc.execute(
         id,
-      } =
-        conversationParamsSchema.parse(
-          request.params
-        );
-
-      const {
-        rol,
+        userId,
         contenido,
-      } =
-        addMessageSchema.parse(
-          request.body
-        );
+      );
 
-      const message =
-        await this.uc.execute(
-          id,
-          rol,
-          contenido
-        );
-
-      response
-        .status(201)
-        .json({
-          success: true,
-          data: message,
-        });
-    } catch (error) {
-      next(error);
-    }
-  };
+    response
+      .status(201)
+      .json({
+        success: true,
+        data: message,
+      });
+  } catch (error) {
+    next(error);
+  }
+};
 }
 
 export class EliminarConversacionController {

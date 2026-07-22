@@ -6,7 +6,9 @@ import type { AuthenticatedRequest } from "../../../http/middlewares/Authenticat
 
 const bodySchema = z.object({
   titulo: z.string().trim().min(3).max(120),
-  descripcion: z.string().trim().nullable().optional(),
+  descripcion: z.string().trim().max(5000,"La descripción no puede superar los 5000 caracteres",)
+  .nullable()
+  .optional(),
   fechaInicio: z.coerce.date(),
   fechaFin: z.coerce.date().nullable().optional(),
   ubicacionId: z.string().min(1).nullable().optional(),

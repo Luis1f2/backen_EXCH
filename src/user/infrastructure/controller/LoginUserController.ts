@@ -4,7 +4,7 @@ import { z } from "zod";
 import type { LoginUser } from "../../application/usecase/LoginUser.js";
 
 const loginSchema = z.object({
-  email: z.string().trim().email().max(150),
+  email: z.string().trim().toLowerCase().email().max(150),
   password: z.string().min(8).max(72)
 });
 

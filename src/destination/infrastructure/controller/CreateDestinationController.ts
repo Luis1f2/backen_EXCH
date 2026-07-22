@@ -5,7 +5,7 @@ import type { CreateDestination } from "../../application/usecase/CreateDestinat
 
 const createDestinationSchema = z.object({
   name: z.string().trim().min(3).max(120),
-  description: z.string().trim().nullable().optional(),
+  descripcion: z.string().trim().max(5000,"La descripción no puede superar los 5000 caracteres",).nullable().optional(),
   categoryName: z.string().trim().min(2).max(80),
   locationId: z.string().uuid()
 });

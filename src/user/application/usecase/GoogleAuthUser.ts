@@ -39,9 +39,13 @@ export class GoogleAuthUser {
       throw new AppError("Token de Google sin correo", 400);
     }
 
-    const { email, name } = payload;
+   const {email,name,} = payload;
 
-    let user = await this.repository.findByEmail(email);
+  const normalizedEmail =email.trim().toLowerCase();
+
+  let user =
+    await this.repository.findByEmail(
+      normalizedEmail,);
 
     if (!user) {
       const userTypeId =
@@ -54,13 +58,16 @@ export class GoogleAuthUser {
       const fakePasswordHash = await this.passwordHasher.hash(randomUUID());
 
       user = await this.repository.create({
-        id: randomUUID(),
-        name: name ?? email.split("@")[0],
-        email,
+      id: randomUUID(),
+        name:
+        name ??
+        normalizedEmail.split("@")[0],
+        email: normalizedEmail,
         phone: null,
-        passwordHash: fakePasswordHash,
-        userTypeId
-      });
+        passwordHash:
+        fakePasswordHash,
+        userTypeId,
+    });
     }
 
     const token = this.tokenService.sign(user.id);

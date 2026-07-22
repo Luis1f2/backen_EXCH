@@ -176,18 +176,80 @@ if (stripeSecretKey) {
       return;
     }
 
-    if (
-      typeof error === "object" &&
-      error !== null &&
-      "code" in error &&
-      error.code === "ER_DUP_ENTRY"
-    ) {
-      response.status(409).json({
-        success: false,
-        message: "El correo ya está registrado",
-      });
-      return;
-    }
+    /*
+ * Errores de restricciones PostgreSQL.
+ *
+ * Nunca devolvemos al cliente:
+ * - SQL interno
+ * - nombres de tablas
+ * - nombres de constraints
+ * - valores sensibles
+ *
+ * Solo mensajes controlados.
+ */
+if (
+  typeof error === "object" &&
+  error !== null &&
+  "code" in error
+) {
+  const postgresCode =
+    String(error.code);
+
+  /*
+   * 23505
+   * unique_violation
+   *
+   * Ejemplos:
+   * - email duplicado
+   * - registro único duplicado
+   */
+  if (postgresCode === "23505") {
+    response.status(409).json({
+      success: false,
+      message:
+        "Ya existe un registro con esos datos",
+    });
+
+    return;
+  }
+
+  /*
+   * 23503
+   * foreign_key_violation
+   *
+   * Ocurre cuando se intenta utilizar
+   * una relación inexistente o eliminar
+   * información todavía referenciada.
+   */
+  if (postgresCode === "23503") {
+    response.status(409).json({
+      success: false,
+      message:
+        "La operación no puede realizarse debido a una relación existente o inválida",
+    });
+
+    return;
+  }
+
+  /*
+   * 23514
+   * check_violation
+   *
+   * Ejemplos:
+   * - calificación fuera de rango
+   * - estado no permitido
+   * - valores que incumplen CHECK
+   */
+  if (postgresCode === "23514") {
+    response.status(400).json({
+      success: false,
+      message:
+        "Los datos no cumplen las reglas requeridas",
+    });
+
+    return;
+  }
+}
 
     console.error(error);
     response.status(500).json({

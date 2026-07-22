@@ -7,7 +7,7 @@ import { OneSignalService } from "../../../notifications/OneSignalService.js";
 
 const bodySchema = z.object({
   titulo: z.string().trim().min(3).max(120),
-  descripcion: z.string().trim().nullable().optional(),
+  descripcion: z.string().trim().max(5000,"La descripción no puede superar los 5000 caracteres",).nullable().optional(),
   precio: z.number().nonnegative().nullable().optional(),
   negocioId: z.string().min(1),
   fechaInicio: z.coerce.date(),

@@ -67,9 +67,18 @@ export class MySqlUserRepository implements UserRepository {
     return this.findOne("u.id = $1", [id], { soloActivos: true });
   }
 
-  async findByEmail(email: string): Promise<User | null> {
-    return this.findOne("u.email = $1", [email], { soloActivos: false });
-  }
+  async findByEmail(email: string,): Promise<User | null> {const normalizedEmail =email.trim().toLowerCase();
+
+  return this.findOne(
+    "LOWER(u.email) = $1",
+    [
+      normalizedEmail,
+    ],
+    {
+      soloActivos: false,
+    },
+  );
+}
 
   async findUserTypeIdByName(name: string): Promise<string | null> {
     const { rows } = await this.databasePool.query<UserTypeRow>(

@@ -8,10 +8,11 @@ export interface ChatRepository {
   crearConversacion(usuarioId: string, titulo?: string): Promise<Conversacion>;
   listarConversaciones(usuarioId: string): Promise<Conversacion[]>;
   obtenerConversacion(id: string, usuarioId: string): Promise<ConversacionConMensajes | null>;
-  agregarMensaje(
-    conversacionId: string,
-    rol: "user" | "bot",
-    contenido: string,
-  ): Promise<MensajeChat>;
+ agregarMensaje(
+  conversacionId: string,
+  usuarioId: string,
+  rol: "user" | "bot",
+  contenido: string,
+): Promise<MensajeChat | null>;
   eliminarConversacion(id: string, usuarioId: string): Promise<boolean>;
 }
