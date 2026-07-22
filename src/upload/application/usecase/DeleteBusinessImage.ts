@@ -1,7 +1,16 @@
 import type { Pool } from "pg";
 
-import { AppError } from "../../../user/application/errors/AppError.js";
-import { removePreviousUpload } from "../../shared/uploadFileUtils.js";
+import type {
+  ImageStorage,
+} from "../ports/ImageStorage.js";
+
+import {
+  AppError,
+} from "../../../user/application/errors/AppError.js";
+
+import {
+  removePreviousUpload,
+} from "../../shared/uploadFileUtils.js";
 
 interface BusinessImageRow {
   imagen_url: string | null;
@@ -9,26 +18,32 @@ interface BusinessImageRow {
 
 export class DeleteBusinessImage {
   constructor(
-    private readonly pool: Pool
+    private readonly pool: Pool,
+    private readonly imageStorage: ImageStorage
   ) {}
 
   async execute(
     negocioId: string,
     userId: string
   ): Promise<void> {
-    const { rows } = await this.pool.query<BusinessImageRow>(
-      `SELECT n.imagen_url
-       FROM negocio_turistico n
-       INNER JOIN negocio_administrador na ON na.negocio_id = n.id
-       WHERE n.id = $1
-         AND na.usuario_id = $2
-         AND na.activo = true
-         AND na.estado_solicitud = 'aprobado'
-         AND n.activo = true
-         AND n.esta_verificado = true
-       LIMIT 1`,
-      [negocioId, userId]
-    );
+    const { rows } =
+      await this.pool.query<BusinessImageRow>(
+        `SELECT n.imagen_url
+         FROM negocio_turistico n
+         INNER JOIN negocio_administrador na
+           ON na.negocio_id = n.id
+         WHERE n.id = $1
+           AND na.usuario_id = $2
+           AND na.activo = true
+           AND na.estado_solicitud = 'aprobado'
+           AND n.activo = true
+           AND n.esta_verificado = true
+         LIMIT 1`,
+        [
+          negocioId,
+          userId,
+        ]
+      );
 
     const business = rows[0];
 
@@ -39,19 +54,27 @@ export class DeleteBusinessImage {
       );
     }
 
-    const { rowCount } = await this.pool.query(
-      `UPDATE negocio_turistico
-       SET imagen_url = NULL
-       WHERE id = $1
-         AND activo = true
-         AND esta_verificado = true`,
-      [negocioId]
-    );
+    const { rowCount } =
+      await this.pool.query(
+        `UPDATE negocio_turistico
+         SET imagen_url = NULL
+         WHERE id = $1
+           AND activo = true
+           AND esta_verificado = true`,
+        [negocioId]
+      );
 
     if ((rowCount ?? 0) === 0) {
-      throw new AppError("Negocio no encontrado", 404);
+      throw new AppError(
+        "Negocio no encontrado",
+        404
+      );
     }
 
-    await removePreviousUpload(business.imagen_url, "negocios");
+    await removePreviousUpload(
+      business.imagen_url,
+      "negocios",
+      this.imageStorage
+    );
   }
 }

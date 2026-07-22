@@ -48,7 +48,7 @@ export class UploadEventImageController {
       const result =
         await this.uploadEventImage.execute(
           eventoId,
-          request.file.filename
+          request.file.buffer
         );
 
       response.status(200).json({

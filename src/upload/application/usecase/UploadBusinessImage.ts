@@ -1,7 +1,16 @@
 import type { Pool } from "pg";
 
-import { AppError } from "../../../user/application/errors/AppError.js";
-import { removePreviousUpload } from "../../shared/uploadFileUtils.js";
+import type {
+  ImageStorage,
+} from "../ports/ImageStorage.js";
+
+import {
+  AppError,
+} from "../../../user/application/errors/AppError.js";
+
+import {
+  removePreviousUpload,
+} from "../../shared/uploadFileUtils.js";
 
 interface BusinessImageRow {
   id: string;
@@ -15,33 +24,34 @@ export interface UploadBusinessImageResult {
 
 export class UploadBusinessImage {
   constructor(
-    private readonly pool: Pool
+    private readonly pool: Pool,
+    private readonly imageStorage: ImageStorage
   ) {}
 
   async execute(
     negocioId: string,
     userId: string,
-    filename: string
+    buffer: Buffer
   ): Promise<UploadBusinessImageResult> {
-   const { rows } =
-  await this.pool.query<BusinessImageRow>(
-    `SELECT
-       n.id,
-       n.imagen_url
-     FROM negocio_administrador na
-     INNER JOIN negocio_turistico n
-       ON n.id = na.negocio_id
-     WHERE na.negocio_id = $1
-       AND na.usuario_id = $2
-       AND na.rol = 'propietario'
-       AND na.activo = true
-       AND n.activo = true
-     LIMIT 1`,
-    [
-      negocioId,
-      userId
-    ]
-  );
+    const { rows } =
+      await this.pool.query<BusinessImageRow>(
+        `SELECT
+           n.id,
+           n.imagen_url
+         FROM negocio_administrador na
+         INNER JOIN negocio_turistico n
+           ON n.id = na.negocio_id
+         WHERE na.negocio_id = $1
+           AND na.usuario_id = $2
+           AND na.rol = 'propietario'
+           AND na.activo = true
+           AND n.activo = true
+         LIMIT 1`,
+        [
+          negocioId,
+          userId,
+        ]
+      );
 
     const business = rows[0];
 
@@ -52,26 +62,48 @@ export class UploadBusinessImage {
       );
     }
 
-    const imagenUrl = `/uploads/negocios/${filename}`;
+    const uploaded =
+      await this.imageStorage.upload(
+        buffer,
+        "negocios"
+      );
 
- const { rowCount } =
-  await this.pool.query(
-    `UPDATE negocio_turistico
-     SET imagen_url = $1
-     WHERE id = $2
-       AND activo = true`,
-    [
-      imagenUrl,
-      negocioId
-    ]
-  );
+    try {
+      const { rowCount } =
+        await this.pool.query(
+          `UPDATE negocio_turistico
+           SET imagen_url = $1
+           WHERE id = $2
+             AND activo = true`,
+          [
+            uploaded.url,
+            negocioId,
+          ]
+        );
 
-    if ((rowCount ?? 0) === 0) {
-      throw new AppError("Negocio no encontrado", 404);
+      if ((rowCount ?? 0) === 0) {
+        throw new AppError(
+          "Negocio no encontrado",
+          404
+        );
+      }
+    } catch (error) {
+      await this.imageStorage
+        .delete(uploaded.publicId)
+        .catch(() => undefined);
+
+      throw error;
     }
 
-    await removePreviousUpload(business.imagen_url, "negocios");
+    await removePreviousUpload(
+      business.imagen_url,
+      "negocios",
+      this.imageStorage
+    );
 
-    return { negocioId, imagenUrl };
+    return {
+      negocioId,
+      imagenUrl: uploaded.url,
+    };
   }
 }

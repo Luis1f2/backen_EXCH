@@ -1,5 +1,8 @@
 import fs from "node:fs/promises";
-import path from "node:path";
+
+import type {
+  ImageStorage,
+} from "../application/ports/ImageStorage.js";
 
 export type StoredUploadFolder =
   | "negocios"
@@ -8,26 +11,32 @@ export type StoredUploadFolder =
   | "eventos"
   | "usuarios";
 
-const UPLOADS_ROOT = path.resolve(
-  process.cwd(),
-  "uploads"
-);
-
 function isNodeError(
   error: unknown
 ): error is NodeJS.ErrnoException {
   return error instanceof Error;
 }
 
+/*
+ * Compatibilidad temporal con código legado.
+ *
+ * Los uploads nuevos ya no usan disco local,
+ * pero mantenemos esta función mientras no
+ * existan referencias antiguas en controllers.
+ */
 export async function removeUploadedFileByPath(
-  filePath: string | undefined
+  filePath:
+    | string
+    | undefined
 ): Promise<void> {
   if (!filePath) {
     return;
   }
 
   try {
-    await fs.unlink(filePath);
+    await fs.unlink(
+      filePath
+    );
   } catch (error) {
     if (
       isNodeError(error) &&
@@ -37,39 +46,129 @@ export async function removeUploadedFileByPath(
     }
 
     console.error(
-      "No se pudo eliminar el archivo:",
+      "No se pudo eliminar el archivo local:",
       error
     );
   }
 }
 
-export async function removePreviousUpload(
-  publicUrl: string | null | undefined,
+function extractCloudinaryPublicId(
+  publicUrl: string,
   folder: StoredUploadFolder
+): string | null {
+  try {
+    const url =
+      new URL(publicUrl);
+
+    if (
+      url.hostname !==
+      "res.cloudinary.com"
+    ) {
+      return null;
+    }
+
+    /*
+     * Ejemplo:
+     *
+     * https://res.cloudinary.com/.../upload/v123/
+     * explorachiapas/eventos/abc.jpg
+     *
+     * Buscamos directamente nuestro namespace,
+     * ignorando transformaciones/versiones previas.
+     */
+    const marker =
+      `explorachiapas/${folder}/`;
+
+    const decodedPath =
+      decodeURIComponent(
+        url.pathname
+      );
+
+    const markerIndex =
+      decodedPath.indexOf(
+        marker
+      );
+
+    if (
+      markerIndex === -1
+    ) {
+      return null;
+    }
+
+    const assetPath =
+      decodedPath.slice(
+        markerIndex
+      );
+
+    /*
+     * Cloudinary public_id no incluye
+     * la extensión del recurso.
+     */
+    return assetPath.replace(
+      /\.[^/.]+$/,
+      ""
+    );
+  } catch {
+    return null;
+  }
+}
+
+export async function removePreviousUpload(
+  publicUrl:
+    | string
+    | null
+    | undefined,
+
+  folder:
+    StoredUploadFolder,
+
+  imageStorage:
+    ImageStorage
 ): Promise<void> {
   if (!publicUrl) {
     return;
   }
 
-  const expectedPrefix =
-    `/uploads/${folder}/`;
-
   /*
-   * Evita borrar archivos externos
-   * o rutas que no pertenecen a uploads.
+   * Ruta antigua de Render.
+   *
+   * El archivo físico probablemente ya fue
+   * eliminado por un redeploy. No hacemos nada.
    */
-  if (!publicUrl.startsWith(expectedPrefix)) {
+  if (
+    publicUrl.startsWith(
+      `/uploads/${folder}/`
+    )
+  ) {
     return;
   }
 
-  const filename =
-    path.basename(publicUrl);
+  const publicId =
+    extractCloudinaryPublicId(
+      publicUrl,
+      folder
+    );
 
-  const filePath = path.join(
-    UPLOADS_ROOT,
-    folder,
-    filename
-  );
+  if (!publicId) {
+    /*
+     * No tocar URLs externas desconocidas.
+     */
+    return;
+  }
 
-  await removeUploadedFileByPath(filePath);
+  try {
+    await imageStorage.delete(
+      publicId
+    );
+  } catch (error) {
+    /*
+     * Una imagen anterior que no se pudo
+     * eliminar no debe invalidar la operación
+     * principal sobre la base de datos.
+     */
+    console.error(
+      "No se pudo eliminar la imagen anterior:",
+      error
+    );
+  }
 }

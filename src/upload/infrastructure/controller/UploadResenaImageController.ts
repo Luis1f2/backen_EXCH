@@ -37,7 +37,7 @@ export class UploadResenaImageController {
         resenaId,
         tipo as ResenaType,
         userId,
-        request.file.filename
+        request.file.buffer
       );
 
       response.status(201).json({ success: true, data: result });

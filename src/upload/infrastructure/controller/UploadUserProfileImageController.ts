@@ -44,7 +44,7 @@ export class UploadUserProfileImageController {
       const result =
         await this.uploadUserProfileImage.execute(
           userId,
-          request.file.filename
+          request.file.buffer
         );
 
       response.status(200).json({

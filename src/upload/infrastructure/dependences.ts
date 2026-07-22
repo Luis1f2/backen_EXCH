@@ -2,6 +2,10 @@
   "pg";
 
 import {
+  CloudinaryImageStorage
+} from "./cloudinary/CloudinaryImageStorage.js";
+
+import {
   JwtTokenService
 } from "../../user/infrastructure/security/SecurityAdapters.js";
 
@@ -88,50 +92,51 @@ export function createUploadModule(
   const tokenService =
     new JwtTokenService(jwtSecret);
 
+  const imageStorage =
+    new CloudinaryImageStorage();
+
   const controllers = {
     business:
       new UploadBusinessImageController(
-        new UploadBusinessImage(pool)
-      ),
+        new UploadBusinessImage(pool,imageStorage)),
 
     resena:
       new UploadResenaImageController(
-        new UploadResenaImage(pool)
-      ),
+        new UploadResenaImage(pool,imageStorage)),
 
     promotion:
       new UploadPromotionImageController(
-        new UploadPromotionImage(pool)
+        new UploadPromotionImage(pool,imageStorage)
       ),
 
     deletePromotion:
     new DeletePromotionImageController(
-      new DeletePromotionImage(pool)
+      new DeletePromotionImage(pool, imageStorage)
     ),
-
+    
     event:
       new UploadEventImageController(
-        new UploadEventImage(pool)
+        new UploadEventImage(pool, imageStorage)
       ),
 
     deleteEvent:
     new DeleteEventImageController(
-      new DeleteEventImage(pool)
+      new DeleteEventImage(pool, imageStorage)
     ),
 
   deleteBusiness:
     new DeleteBusinessImageController(
-      new DeleteBusinessImage(pool)
+      new DeleteBusinessImage(pool, imageStorage)
     ),
 
     userProfile:
       new UploadUserProfileImageController(
-        new UploadUserProfileImage(pool)
+        new UploadUserProfileImage(pool, imageStorage)
       ),
 
       deleteUserProfile:
     new DeleteUserProfileImageController(
-      new DeleteUserProfileImage(pool)
+      new DeleteUserProfileImage(pool, imageStorage)
     ),
 
   };

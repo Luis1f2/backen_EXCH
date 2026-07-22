@@ -57,7 +57,7 @@ export class UploadPromotionImageController {
         await this.uploadPromotionImage.execute(
           promocionId,
           userId,
-          request.file.filename
+          request.file.buffer
         );
 
       response.status(200).json({

@@ -28,7 +28,7 @@ export class UploadBusinessImageController {
       const result = await this.uploadBusinessImage.execute(
         negocioId,
         userId,
-        request.file.filename
+        request.file.buffer
       );
 
       response.status(200).json({ success: true, data: result });
