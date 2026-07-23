@@ -38,7 +38,7 @@ export function createHttpApp(
   app.disable("x-powered-by");
 
   const allowedOrigins = (
-    process.env.FRONTEND_ORIGIN ?? "http://localhost:5173","http://52.5.132.247/login"
+    process.env.FRONTEND_ORIGIN ?? "http://localhost:5173","http://52.5.132.247"
   )
     .split(",")
     .map((origin) => origin.trim())
