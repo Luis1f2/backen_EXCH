@@ -9,7 +9,6 @@ import type { GetReviewController } from "../controller/GetReviewController.js";
 import type { ListReviewsController } from "../controller/ListReviewsController.js";
 import type { UpdateReviewController } from "../controller/UpdateReviewController.js";
 import type { DeleteReviewController } from "../controller/DeleteReviewController.js";
-import type { ListMyBusinessReviewsController } from "../controller/ListMyBusinessReviewsController.js";
 
 interface ReviewControllers {
   create: CreateReviewController;
@@ -17,7 +16,6 @@ interface ReviewControllers {
   list: ListReviewsController;
   update: UpdateReviewController;
   delete: DeleteReviewController;
-  businessMine: ListMyBusinessReviewsController;
 }
 
 export function createReviewRoutes(
@@ -28,7 +26,6 @@ export function createReviewRoutes(
   const authenticate = createAuthenticateMiddleware(tokenService);
 
   router.get("/", controllers.list.execute);
-  router.get("/business/mine", authenticate, controllers.businessMine.execute);
   router.get("/:id", controllers.get.execute);
 
   router.post("/", authenticate, controllers.create.execute);

@@ -1,4 +1,4 @@
-import type { Pool } from "pg";
+﻿import type { Pool } from "pg";
 
 import { JwtTokenService } from "../../user/infrastructure/security/SecurityAdapters.js";
 
@@ -15,7 +15,6 @@ import { GetReviewController } from "./controller/GetReviewController.js";
 import { ListReviewsController } from "./controller/ListReviewsController.js";
 import { UpdateReviewController } from "./controller/UpdateReviewController.js";
 import { DeleteReviewController } from "./controller/DeleteReviewController.js";
-import { ListMyBusinessReviewsController } from "./controller/ListMyBusinessReviewsController.js";
 
 import { createReviewRoutes } from "./routes/reviewRoutes.js";
 
@@ -41,8 +40,7 @@ export function createReviewModule(
     ),
     delete: new DeleteReviewController(
       new DeleteReview(repository)
-    ),
-    businessMine: new ListMyBusinessReviewsController(pool)
+    )
   };
 
   return createReviewRoutes(controllers, tokenService);
