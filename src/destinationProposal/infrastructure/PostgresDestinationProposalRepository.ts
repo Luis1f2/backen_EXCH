@@ -533,18 +533,22 @@ export class PostgresDestinationProposalRepository {
             INSERT INTO destino_imagen (
               id,
               destino_id,
-              imagen_url,
-              imagen_public_id,
+              url_imagen,
+              public_id,
+              descripcion,
               orden,
-              es_portada
+              es_portada,
+              activo
             )
             VALUES (
               $1,
               $2,
               $3,
               $4,
+              NULL,
               $5,
-              $6
+              $6,
+              true
             )
           `,
           [
@@ -552,7 +556,7 @@ export class PostgresDestinationProposalRepository {
             destinationId,
             image.imagen_url,
             image.imagen_public_id,
-            index + 1,
+            index,
             index === 0,
           ],
         );

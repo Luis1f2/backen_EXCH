@@ -114,7 +114,7 @@ if (
         effectiveFechaInicio
     ) {
       throw new AppError(
-        "La fecha de fin no puede ser anterior a la fecha de inicio",
+        "La fecha y hora de fin deben ser posteriores a la fecha y hora de inicio",
         400,
       );
     }
