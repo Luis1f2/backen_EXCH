@@ -12,6 +12,7 @@ import { AppError } from "../user/application/errors/AppError.js";
 import { createUserModule } from "../user/infrastructure/dependences.js";
 import { createLocationModule } from "../location/infrastructure/dependences.js";
 import { createDestinationModule } from "../destination/infrastructure/dependences.js";
+import { createDestinationProposalModule } from "../destinationProposal/infrastructure/dependences.js";
 import { createBusinessModule } from "../business/infrastructure/dependences.js";
 import { createReviewModule } from "../review/infrastructure/dependences.js";
 import { createAlertModule } from "../alert/infrastructure/dependences.js";
@@ -89,6 +90,13 @@ app.use(
   app.use(
     "/v1/api/destinations",
     createDestinationModule(databasePool, jwtSecret),
+  );
+  app.use(
+    "/v1/api/destination-proposals",
+    createDestinationProposalModule(
+      databasePool,
+      jwtSecret,
+    ),
   );
   app.use(
     "/v1/api/businesses",

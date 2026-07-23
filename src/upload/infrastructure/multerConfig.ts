@@ -55,7 +55,8 @@ function fileFilter(
 }
 
 function createImageUploader(
-  maxSizeBytes: number
+  maxSizeBytes: number,
+  maxFiles = 1
 ) {
   return multer({
     storage:
@@ -67,7 +68,8 @@ function createImageUploader(
       fileSize:
         maxSizeBytes,
 
-      files: 1,
+      files:
+        maxFiles,
     },
   });
 }
@@ -95,4 +97,9 @@ export const uploadEvento =
 export const uploadUsuario =
   createImageUploader(
     PROFILE_MAX_SIZE_BYTES
+  );
+export const uploadDestinationProposalImages =
+  createImageUploader(
+    CONTENT_MAX_SIZE_BYTES,
+    5
   );
