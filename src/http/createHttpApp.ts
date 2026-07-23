@@ -1,4 +1,4 @@
-﻿import path from "node:path";
+import path from "node:path";
 import express, {
   type ErrorRequestHandler,
   type Express,
@@ -22,6 +22,7 @@ import { createDestinoModule } from "../destino/infrastructure/dependencies.js";
 import { createEventModule } from "../event/infrastructure/dependences.js";
 import { createCategoryModule } from "../category/infrastructure/dependences.js";
 import { createStatModule } from "../stat/infrastructure/dependences.js";
+import { createPremiumAnalyticsModule } from "../premiumAnalytics/infrastructure/dependences.js";
 import { createAdminModule } from "../admin/infrastructure/dependences.js";
 import { createPromotionModule } from "../promotion/infrastructure/dependences.js";
 import { createUploadModule } from "../upload/infrastructure/dependences.js";
@@ -106,6 +107,14 @@ app.use(
   app.use("/v1/api/categories", createCategoryModule(databasePool, jwtSecret));
   app.use("/v1/api/events", createEventModule(databasePool, jwtSecret));
   app.use("/v1/api/stats", createStatModule(databasePool, jwtSecret));
+  app.use(
+    "/v1/api/premium-analytics",
+    createPremiumAnalyticsModule(
+      databasePool,
+      jwtSecret,
+    ),
+  );
+
   app.use("/v1/api/admin", createAdminModule(databasePool, jwtSecret));
   app.use(
     "/v1/api/promotions",
