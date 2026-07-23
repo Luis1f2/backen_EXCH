@@ -25,8 +25,6 @@ import {
   createRoleMiddleware,
 } from "../../../http/middlewares/createRoleMiddleware.js";
 
-import { createPremiumAccessMiddleware } from "../../../payment/middleware/createPremiumAccessMiddleware.js";
-
 import type {
   PremiumAnalyticsController,
 } from "../controller/PremiumAnalyticsController.js";
@@ -70,10 +68,6 @@ export function createPremiumAnalyticsRoutes(
         "admin_negocio",
       ],
     );
-
-
-  const premiumOnly =
-    createPremiumAccessMiddleware(pool);
 
 
   /*
@@ -172,9 +166,6 @@ export function createPremiumAnalyticsRoutes(
 
     businessAdminOnly,
 
-
-    premiumOnly,
-
     controller.report,
   );
 
@@ -183,9 +174,6 @@ export function createPremiumAnalyticsRoutes(
     "/reports",
 
     businessAdminOnly,
-
-
-    premiumOnly,
 
     controller.report,
   );
@@ -196,9 +184,6 @@ export function createPremiumAnalyticsRoutes(
 
     businessAdminOnly,
 
-
-    premiumOnly,
-
     controller.trends,
   );
 
@@ -208,9 +193,6 @@ export function createPremiumAnalyticsRoutes(
 
     businessAdminOnly,
 
-
-    premiumOnly,
-
     controller.rankings,
   );
 
@@ -219,9 +201,6 @@ export function createPremiumAnalyticsRoutes(
     "/heatmap",
 
     businessAdminOnly,
-
-
-    premiumOnly,
 
     controller.heatmap,
   );
@@ -247,9 +226,6 @@ export function createPremiumAnalyticsRoutes(
 
     businessAdminOnly,
 
-
-    premiumOnly,
-
     controller.saturation,
   );
 
@@ -258,9 +234,6 @@ export function createPremiumAnalyticsRoutes(
     "/sustainability/redistribution",
 
     businessAdminOnly,
-
-
-    premiumOnly,
 
     controller.redistribution,
   );
