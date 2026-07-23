@@ -15,6 +15,15 @@ import type { DeleteBusinessController } from "../controller/DeleteBusinessContr
 import type { ValidateBusinessController } from "../controller/ValidateBusinessController.js";
 import type { ListBusinessRequestsController } from "../controller/ListBusinessRequestsController.js";
 
+import type {
+  BusinessGalleryController,
+} from "../controller/BusinessGalleryController.js";
+
+import {
+  uploadBusinessGalleryImages,
+} from "../../../upload/infrastructure/multerConfig.js";
+
+
 import type { GetBusinessSchedulesController } from "../controller/GetBusinessSchedulesController.js";
 import type { ReplaceBusinessSchedulesController } from "../controller/ReplaceBusinessSchedulesController.js";
 
@@ -50,6 +59,9 @@ interface BusinessControllers {
 
   deleteService:
     DeleteBusinessServiceController;
+
+  gallery:
+    BusinessGalleryController;
 }
 
 export function createBusinessRoutes(
@@ -149,6 +161,37 @@ export function createBusinessRoutes(
     "/:id/services/:serviceId",
     businessAdminOnly,
     controllers.deleteService.execute,
+  );
+
+  /*
+   * Galería de fotografías del negocio.
+   *
+   * Consulta pública.
+   */
+  router.get(
+    "/:id/gallery",
+    controllers.gallery.list,
+  );
+
+  /*
+   * Solo admin_negocio autenticado.
+   * El servicio valida además que sea
+   * propietario del negocio específico.
+   */
+  router.post(
+    "/:id/gallery",
+    businessAdminOnly,
+    uploadBusinessGalleryImages.array(
+      "imagenes",
+      10,
+    ),
+    controllers.gallery.upload,
+  );
+
+  router.delete(
+    "/:id/gallery/:imageId",
+    businessAdminOnly,
+    controllers.gallery.delete,
   );
 
   /*

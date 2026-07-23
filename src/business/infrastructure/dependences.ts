@@ -2,6 +2,19 @@
 
 import { JwtTokenService } from "../../user/infrastructure/security/SecurityAdapters.js";
 
+import {
+  CloudinaryImageStorage,
+} from "../../upload/infrastructure/cloudinary/CloudinaryImageStorage.js";
+
+import {
+  BusinessGalleryService,
+} from "../application/usecase/BusinessGalleryService.js";
+
+import {
+  BusinessGalleryController,
+} from "./controller/BusinessGalleryController.js";
+
+
 import { CreateBusiness } from "../application/usecase/CreateBusiness.js";
 import { GetBusiness } from "../application/usecase/GetBusiness.js";
 import { ListBusinesses } from "../application/usecase/ListBusinesses.js";
@@ -55,6 +68,16 @@ export function createBusinessModule(
 
   const tokenService =
     new JwtTokenService(jwtSecret);
+
+
+  const imageStorage =
+    new CloudinaryImageStorage();
+
+  const galleryService =
+    new BusinessGalleryService(
+      pool,
+      imageStorage,
+    );
 
   const controllers = {
     create: new CreateBusinessController(
@@ -139,6 +162,11 @@ listRequests:
           serviceRepository,
           repository
         )
+      ),
+
+    gallery:
+      new BusinessGalleryController(
+        galleryService,
       )
   };
 

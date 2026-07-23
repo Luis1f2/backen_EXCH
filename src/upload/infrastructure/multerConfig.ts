@@ -103,3 +103,10 @@ export const uploadDestinationProposalImages =
     CONTENT_MAX_SIZE_BYTES,
     5
   );
+
+
+export const uploadBusinessGalleryImages =
+  createImageUploader(
+    CONTENT_MAX_SIZE_BYTES,
+    10
+  );
