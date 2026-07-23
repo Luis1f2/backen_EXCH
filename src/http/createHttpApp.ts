@@ -1,4 +1,4 @@
-import path from "node:path";
+﻿import path from "node:path";
 import express, {
   type ErrorRequestHandler,
   type Express,
@@ -38,7 +38,7 @@ export function createHttpApp(
   app.disable("x-powered-by");
 
   const allowedOrigins = (
-    process.env.FRONTEND_ORIGIN ?? "http://localhost:5173"
+    process.env.FRONTEND_ORIGIN ?? "http://localhost:5173","http://52.5.132.247/login"
   )
     .split(",")
     .map((origin) => origin.trim())
