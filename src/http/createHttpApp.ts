@@ -37,13 +37,16 @@ export function createHttpApp(
   const app = express();
   app.disable("x-powered-by");
 
-  const allowedOrigins = (
-    process.env.FRONTEND_ORIGIN ?? "http://localhost:5173","http://52.5.132.247"
-  )
-    .split(",")
-    .map((origin) => origin.trim())
-    .filter(Boolean);
-
+ const allowedOrigins = process.env.FRONTEND_ORIGIN
+  ? process.env.FRONTEND_ORIGIN
+      .split(",")
+      .map((origin) => origin.trim())
+      .filter(Boolean)
+  : [
+      "http://localhost:5173",
+      "http://52.5.132.247",
+    ];
+    
   app.use(
     cors({
       origin: allowedOrigins,
