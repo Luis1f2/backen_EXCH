@@ -1,9 +1,9 @@
 const ONESIGNAL_APP_ID =
   process.env.ONESIGNAL_APP_ID ??
-  'ee3de697-3022-4731-8d8c-759bfad87fec';
+  "ee3de697-3022-4731-8d8c-759bfad87fec";
 
 const ONESIGNAL_API_URL =
-  'https://api.onesignal.com/notifications';
+  "https://api.onesignal.com/notifications";
 
 interface NotificationData {
   [key: string]:
@@ -24,83 +24,85 @@ interface OneSignalResponse {
   errors?: unknown;
 }
 
+function notificationBody(
+  title: string,
+  description: string | null,
+): string {
+  const normalizedDescription =
+    description?.replace(/\s+/g, " ").trim() ?? "";
+
+  if (!normalizedDescription) {
+    return title;
+  }
+
+  const maxDescriptionLength = 140;
+  const shortDescription =
+    normalizedDescription.length > maxDescriptionLength
+      ? `${normalizedDescription.slice(0, maxDescriptionLength - 1).trimEnd()}…`
+      : normalizedDescription;
+
+  return `${title} — ${shortDescription}`;
+}
+
 export class OneSignalService {
   private readonly apiKey: string;
 
   constructor() {
     this.apiKey =
-      process.env.ONESIGNAL_REST_API_KEY ?? '';
+      process.env.ONESIGNAL_REST_API_KEY ?? "";
   }
 
-  /**
-   * Notifica una nueva promoción
-   * a todos los usuarios suscritos.
-   */
   async notifyNewPromotion(
-    titulo: string,
-    negocioNombre: string | null,
-    promotionId?: string,
+    title: string,
+    description: string | null,
+    promotionId: string,
   ): Promise<void> {
-    const body = negocioNombre
-      ? `${negocioNombre}: ${titulo}`
-      : titulo;
-
     await this.sendToAll({
       title:
-        'Nueva promoción en ExploraChiapas',
-      body,
+        "Nueva promoción en ExploraChiapas",
+      body: notificationBody(
+        title,
+        description,
+      ),
       data: {
-        type: 'promotion',
-        promotionId:
-          promotionId ?? null,
+        type: "promotion",
+        promotionId,
       },
     });
   }
 
-  /**
-   * Notifica un nuevo evento
-   * a todos los usuarios.
-   *
-   * Podemos usar este método como fallback
-   * cuando el evento no tenga categoría.
-   */
   async notifyNewEvent(
-    titulo: string,
-    eventId?: string,
+    title: string,
+    description: string | null,
+    eventId: string,
   ): Promise<void> {
     await this.sendToAll({
       title:
-        'Nuevo evento en ExploraChiapas',
-      body: titulo,
+        "Nuevo evento en ExploraChiapas",
+      body: notificationBody(
+        title,
+        description,
+      ),
       data: {
-        type: 'event',
-        eventId: eventId ?? null,
+        type: "event",
+        eventId,
       },
     });
   }
 
-  /**
-   * Envía un evento solamente
-   * a usuarios concretos.
-   *
-   * userIds son UUID de tabla usuario,
-   * registrados en móvil mediante:
-   *
-   * OneSignal.login(usuario.id)
-   */
   async notifyEventToUsers(
     userIds: string[],
-    titulo: string,
+    title: string,
     eventId?: string,
   ): Promise<void> {
     await this.sendToUsers(
       userIds,
       {
         title:
-          'Nuevo evento para ti',
-        body: titulo,
+          "Nuevo evento para ti",
+        body: title,
         data: {
-          type: 'event',
+          type: "event",
           eventId:
             eventId ?? null,
         },
@@ -108,17 +110,13 @@ export class OneSignalService {
     );
   }
 
-  /**
-   * Enviar a todos los usuarios
-   * actualmente suscritos.
-   */
   async sendToAll(
     options: SendNotificationOptions,
   ): Promise<void> {
     if (!this.apiKey) {
       console.warn(
-        'OneSignal deshabilitado: ' +
-          'falta ONESIGNAL_REST_API_KEY',
+        "OneSignal deshabilitado: " +
+          "falta ONESIGNAL_REST_API_KEY",
       );
 
       return;
@@ -126,23 +124,18 @@ export class OneSignalService {
 
     await this.send({
       app_id: ONESIGNAL_APP_ID,
-
-      target_channel: 'push',
-
+      target_channel: "push",
       included_segments: [
-        'Subscribed Users',
+        "Subscribed Users",
       ],
-
       headings: {
         en: options.title,
         es: options.title,
       },
-
       contents: {
         en: options.body,
         es: options.body,
       },
-
       ...(options.data
         ? {
             data: options.data,
@@ -151,17 +144,14 @@ export class OneSignalService {
     });
   }
 
-  /**
-   * Enviar solamente a UUID concretos.
-   */
   async sendToUsers(
     userIds: string[],
     options: SendNotificationOptions,
   ): Promise<void> {
     if (!this.apiKey) {
       console.warn(
-        'OneSignal deshabilitado: ' +
-          'falta ONESIGNAL_REST_API_KEY',
+        "OneSignal deshabilitado: " +
+          "falta ONESIGNAL_REST_API_KEY",
       );
 
       return;
@@ -177,7 +167,7 @@ export class OneSignalService {
 
     if (uniqueUserIds.length === 0) {
       console.warn(
-        'OneSignal: no hay destinatarios',
+        "OneSignal: no hay destinatarios",
       );
 
       return;
@@ -185,23 +175,18 @@ export class OneSignalService {
 
     await this.send({
       app_id: ONESIGNAL_APP_ID,
-
-      target_channel: 'push',
-
+      target_channel: "push",
       include_aliases: {
         external_id: uniqueUserIds,
       },
-
       headings: {
         en: options.title,
         es: options.title,
       },
-
       contents: {
         en: options.body,
         es: options.body,
       },
-
       ...(options.data
         ? {
             data: options.data,
@@ -217,34 +202,30 @@ export class OneSignalService {
       const response = await fetch(
         ONESIGNAL_API_URL,
         {
-          method: 'POST',
-
+          method: "POST",
           headers: {
-            'Content-Type':
-              'application/json',
-
+            "Content-Type":
+              "application/json",
             Authorization:
               `Key ${this.apiKey}`,
           },
-
           body:
             JSON.stringify(payload),
         },
       );
 
-      let result:
-        OneSignalResponse = {};
+      let result: OneSignalResponse = {};
 
       try {
         result =
           (await response.json()) as OneSignalResponse;
       } catch {
-        // Respuesta sin JSON.
+        // OneSignal puede responder sin JSON.
       }
 
       if (!response.ok) {
         console.error(
-          'Error enviando OneSignal:',
+          "Error enviando OneSignal:",
           response.status,
           result,
         );
@@ -254,8 +235,8 @@ export class OneSignalService {
 
       if (!result.id) {
         console.warn(
-          'OneSignal aceptó la solicitud ' +
-            'pero no creó notificación:',
+          "OneSignal aceptó la solicitud " +
+            "pero no creó la notificación:",
           result,
         );
 
@@ -263,17 +244,16 @@ export class OneSignalService {
       }
 
       console.log(
-        'Notificación OneSignal enviada:',
+        "Notificación OneSignal enviada:",
         result.id,
       );
     } catch (error) {
       /*
-       * Una falla en OneSignal
-       * NO debe tumbar la creación
-       * de eventos/promociones.
+       * Una falla externa no debe revertir
+       * el evento o la promoción ya guardados.
        */
       console.error(
-        'Error de conexión con OneSignal:',
+        "Error de conexión con OneSignal:",
         error,
       );
     }
